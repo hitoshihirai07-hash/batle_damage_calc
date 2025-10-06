@@ -21,11 +21,11 @@
     "はがね":{"こおり":2,"いわ":2,"フェアリー":2,"ほのお":0.5,"みず":0.5,"でんき":0.5,"はがね":0.5},
     "フェアリー":{"かくとう":2,"ドラゴン":2,"あく":2,"ほのお":0.5,"どく":0.5,"はがね":0.5}
   };
+
   const NATURES={"いじっぱり":{atk:1.1,spa:0.9},"ようき":{spe:1.1,spa:0.9},"おくびょう":{spe:1.1,atk:0.9},"ひかえめ":{spa:1.1,atk:0.9},"ずぶとい":{def:1.1,atk:0.9},"おだやか":{spd:1.1,atk:0.9},"てれや":{}};
 
   const moveDB={list:[]};
   const pokeDB={map:new Map(), displayNames:[]};
-  const buildDB={raw:null, teams:[]};
 
   function normName(s){return (s||'').toString().trim().replace(/[\\s・]/g,'').toLowerCase();}
 
@@ -59,20 +59,9 @@
     if(isHP) return Math.floor(((2*base+iv+Math.floor(ev/4))*lv)/100)+lv+10;
     const s=Math.floor(((2*base+iv+Math.floor(ev/4))*lv)/100)+5; return Math.floor(s*nMul);
   }
-  function natureMul(stat,nat){ const n=NATURES[nat]||{}; if(n[stat]>1) return 1.1; if(n[stat]&&n[stat]<1) return 0.9; return 1.0; }
-  function typeEffect(moveType,defTypes){ let m=1.0; (defTypes||[]).forEach(t=>{ const row=TYPE_CHART[moveType]||{}; m*=(row[t]||1.0); }); return m; }
-  function stabMultiplier(attTypes,teraType,moveType){ const has=attTypes.includes(moveType); if(teraType&&teraType===moveType){ return attTypes.includes(teraType)?2.0:1.5; } return has?1.5:1.0; }
-  function weatherMul(w,m){ if(w==="雨"){ if(m==="みず")return 1.5; if(m==="ほのお")return 0.5;} if(w==="晴れ"){ if(m==="ほのお")return 1.5; if(m==="みず")return 0.5;} return 1.0; }
-  function itemMul(item,cat){ if(!item) return 1.0; if(/こだわりハチマキ/.test(item)&&cat==="物理")return 1.5; if(/こだわりメガネ/.test(item)&&cat==="特殊")return 1.5; if(/いのちのたま/.test(item))return 1.3; return 1.0; }
-  function abilityMul(ab,mt,cat){ if(!ab) return 1.0; if(/てきおうりょく/.test(ab)) return 1.33; if(/もらいび/.test(ab)&&mt==="ほのお")return 1.5; return 1.0; }
 
-  function calcDamage(ctx){
-    const L=Number(ctx.level||50), A=ctx.category==="物理"?ctx.atk:ctx.spa, D=ctx.category==="物理"?ctx.def:ctx.spd;
-    const BP=Math.max(1,Number(ctx.power||0)); const base=Math.floor(Math.floor((2*L/5+2)*BP*A/Math.max(1,D))/50)+2;
-    let mod=1.0; mod*=stabMultiplier(ctx.attackerTypes||[],ctx.teraType,ctx.moveType); mod*=typeEffect(ctx.moveType,ctx.defenderTypes||[]); mod*=weatherMul(ctx.weather,ctx.moveType);
-    if(ctx.critical) mod*=1.5; if(ctx.burn&&ctx.category==="物理") mod*=0.5; mod*=itemMul(ctx.item,ctx.category); mod*=abilityMul(ctx.ability,ctx.moveType,ctx.category); if(ctx.screen) mod*= (ctx.format==="ダブル"? 2/3 : 0.5);
-    const min=Math.floor(base*mod*0.85), max=Math.floor(base*mod*1.00); return [min,max];
-  }
+  function q(s,r){return (r||document).querySelector(s)}; function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
+  function applyTypeChips(panel, types){ const box = q('[data-typechips]', panel); if(!box) return; box.innerHTML = ""; (types||[]).forEach(t=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=t; box.appendChild(span); }); }
 
   function buildDatalist(id, arr){
     const dl=document.createElement('datalist'); dl.id=id;
@@ -87,9 +76,30 @@
     return pokeDB.map.get(key) || pokeDB.map.get(normName(key));
   }
 
+  function natureMul(stat,nat){ const n=NATURES[nat]||{}; if(n[stat]>1) return 1.1; if(n[stat]&&n[stat]<1) return 0.9; return 1.0; }
+  function typeEffect(moveType,defTypes){ const TYPE_CHART=window.TYPE_CHART; let m=1.0; (defTypes||[]).forEach(t=>{ const row=TYPE_CHART[moveType]||{}; m*=(row[t]||1.0); }); return m; }
+  function stabMultiplier(attTypes,teraType,moveType){ const has=attTypes.includes(moveType); if(teraType&&teraType===moveType){ return attTypes.includes(teraType)?2.0:1.5; } return has?1.5:1.0; }
+  function weatherMul(w,m){ if(w==="雨"){ if(m==="みず")return 1.5; if(m==="ほのお")return 0.5;} if(w==="晴れ"){ if(m==="ほのお")return 1.5; if(m==="みず")return 0.5;} return 1.0; }
+  function itemMul(item,cat){ if(!item) return 1.0; if(/こだわりハチマキ/.test(item)&&cat==="物理")return 1.5; if(/こだわりメガネ/.test(item)&&cat==="特殊")return 1.5; if(/いのちのたま/.test(item))return 1.3; return 1.0; }
+  function abilityMul(ab,mt,cat){ if(!ab) return 1.0; if(/てきおうりょく/.test(ab)) return 1.33; if(/もらいび/.test(ab)&&mt==="ほのお")return 1.5; return 1.0; }
+
+  function calcDamage(ctx){
+    const L=Number(ctx.level||50), A=ctx.category==="物理"?ctx.atk:ctx.spa, D=ctx.category==="物理"?ctx.def:ctx.spd;
+    const BP=Math.max(1,Number(ctx.power||0)); const base=Math.floor(Math.floor((2*L/5+2)*BP*A/Math.max(1,D))/50)+2;
+    let mod=1.0; mod*=stabMultiplier(ctx.attackerTypes||[],ctx.teraType,ctx.moveType); mod*=typeEffect(ctx.moveType,ctx.defenderTypes||[]); mod*=weatherMul(ctx.weather,ctx.moveType);
+    if(ctx.critical) mod*=1.5; if(ctx.burn&&ctx.category==="物理") mod*=0.5; mod*=itemMul(ctx.item,ctx.category); mod*=abilityMul(ctx.ability,ctx.moveType,ctx.category); if(ctx.screen) mod*= 0.5;
+    const min=Math.floor(base*mod*0.85), max=Math.floor(base*mod*1.00); return [min,max];
+  }
+
   function statBlock(name,evs,nature,lv=50,iv=31){
     const info=pokeInfo(name); if(!info||!info.base||Object.keys(info.base).length===0) return {_unknown:true,types:[],hp:1,atk:1,def:1,spa:1,spd:1,spe:1};
     const b=Object.assign({hp:1,atk:1,def:1,spa:1,spd:1,spe:1}, info.base||{});
+    function toStat(base,iv,ev,lv,nMul,isHP=false){
+      base=Number(base||0); iv=Number(iv||31); ev=Number(ev||0); lv=Number(lv||50); nMul=Number(nMul||1);
+      if(isHP) return Math.floor(((2*base+iv+Math.floor(ev/4))*lv)/100)+lv+10;
+      const s=Math.floor(((2*base+iv+Math.floor(ev/4))*lv)/100)+5; return Math.floor(s*nMul);
+    }
+    function natureMul(stat,nat){ const n=NATURES[nat]||{}; if(n[stat]>1) return 1.1; if(n[stat]&&n[stat]<1) return 0.9; return 1.0; }
     return {
       hp:toStat(b.hp,iv,evs.hp||0,lv,1.0,true),
       atk:toStat(b.atk,iv,evs.atk||0,lv,natureMul('atk',nature)),
@@ -101,28 +111,22 @@
     };
   }
 
-  function presetEV(name){ const m={"H252B252":{hp:252,def:252,spd:4},"H252D252":{hp:252,spd:252,def:4},"A252S252":{atk:252,spe:252,hp:4},"C252S252":{spa:252,spe:252,hp:4}}; return m[name]||{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}; }
-  function q(s,r){return (r||document).querySelector(s)}; function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
-  function applyTypeChips(panel, types){ const box = q('[data-typechips]', panel); if(!box) return; box.innerHTML = ""; (types||[]).forEach(t=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=t; box.appendChild(span); }); }
-
   function bestMoveDamage(att,def,env,moves){
     let best=[0,0], name="";
     for(const mvName of moves){
       const mv=moveByName(mvName); if(!mv) continue; if(mv.c==="変化"||!mv.p) continue;
       const ctx={level:env.level||50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:mv.t, attackerTypes:att.types, defenderTypes:def.types,
-        teraType:env.teraType||null, weather:env.weather||null, critical:env.critical||false, burn:false, item:env.item||null, ability:env.ability||null, screen:env.screen||false, format:'シングル'};
+        teraType:q('#sel_tera').value||null, weather:q('#sel_weather').value||null, critical:q('#chk_crit').checked, burn:false, item:q('#sel_item').value||null, ability:q('#sel_ability').value||null, screen:q('#chk_screen').checked, format:'シングル'};
       const dmg=calcDamage(ctx); if(dmg[1]>best[1]){ best=dmg; name=mvName; }
     }
     return {dmg:best, name};
   }
 
-  function showTab(id){ qa('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===id?'true':'false')); qa('.panel').forEach(p=>p.setAttribute('aria-hidden',p.id===id?'false':'true')); }
-
   function TYPES_HTML(){return TYPES.map(t=>`<option>${t}</option>`).join("")}
-  function moveRowHTML(i){return `<div class="row"><label>技${i}</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option><option>変化</option></select><input type="number" data-move-pow placeholder="威力"/></div>`}
+  function moveRowHTML(i){return `<div class="row"><label>技${i}</label><input type="text" data-move-input placeholder="技名" list="dl_moves"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option><option>変化</option></select><input type="number" data-move-pow placeholder="威力"/></div>`}
   function cardTemplate(side,idx){
     return `<div class="card panel" style="display:block" data-side="${side}" data-slot="${idx}">
-      <div class="row"><label>名前</label><input type="text" data-poke-input placeholder="ポケモン"/><div class="chips" data-typechips></div></div>
+      <div class="row"><label>名前</label><input type="text" data-poke-input placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips></div></div>
       <div class="row"><label>性格</label><select data-nature><option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option></select></div>
       <div class="row"><span class="pill">EV</span><input type="number" data-ev-hp placeholder="H" value="0"/><input type="number" data-ev-atk placeholder="A" value="0"/><input type="number" data-ev-def placeholder="B" value="0"/><input type="number" data-ev-spa placeholder="C" value="0"/><input type="number" data-ev-spd placeholder="D" value="0"/><input type="number" data-ev-spe placeholder="S" value="0"/>
       <button class="btn" data-ev-preset="A252S252">A252S252</button><button class="btn" data-ev-preset="C252S252">C252S252</button><button class="btn" data-ev-preset="H252B252">H252B252</button><button class="btn" data-ev-preset="H252D252">H252D252</button></div>
@@ -139,11 +143,8 @@
     const pw=q('#party .cards');
     for(let i=1;i<=6;i++){ pw.insertAdjacentHTML('beforeend', cardTemplate('party', i)); }
   }
-  function buildBuildTab(){ /* populated after import */ }
-
   function wireCommonInputs(root){
     root.querySelectorAll('[data-move-input]').forEach(inp=>{
-      inp.setAttribute('list','dl_moves');
       inp.addEventListener('change',()=>{
         const row=inp.closest('.row'), mv=moveByName(inp.value);
         if(mv&&row){ const t=row.querySelector('[data-move-type]'), c=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]');
@@ -152,7 +153,6 @@
       });
     });
     root.querySelectorAll('[data-poke-input]').forEach(inp=>{
-      inp.setAttribute('list','dl_pokemon');
       inp.addEventListener('change',()=>{
         const card=inp.closest('.card'); const info=pokeInfo(inp.value||"");
         applyTypeChips(card, (info&&info.types)||[]);
@@ -164,49 +164,8 @@
     }));
   }
 
-  function build(){
-    document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click',()=>showTab(t.dataset.tab))); showTab('build');
-    buildDatalist('dl_moves', (moveDB.list.map(m=>m.n||m.name).filter(Boolean).sort()));
-    buildDatalist('dl_pokemon', pokeDB.displayNames);
-    buildSix(); wireCommonInputs(document);
-    buildParty(); wireCommonInputs(q('#party'));
-    buildBuildTab();
-
-    const fi=q('#team_file'), bt=q('#btn_team_import');
-    if(fi&&bt){
-      bt.addEventListener('click', ()=>fi.click());
-      fi.addEventListener('change', ev=>{
-        const file=ev.target.files[0]; if(!file) return;
-        const rd=new FileReader(); rd.onload=()=>{
-          try{
-            const data=JSON.parse(rd.result); const team=(data.team||(Array.isArray(data)&&data[0]&&data[0].team)||[]).slice(0,6);
-            const cards=Array.from(document.querySelectorAll('#opp .card'));
-            team.forEach((p,i)=>{ if(cards[i]){ const name=(p.name||p.pokemon||p["ポケモン"]||"").trim(); const input=cards[i].querySelector('[data-poke-input]'); if(input){ input.value=name; input.dispatchEvent(new Event('change',{bubbles:true})); }}});
-          }catch(e){ alert('JSONの形式を読み取れませんでした'); }
-        }; rd.readAsText(file,'utf-8');
-      });
-    }
-
-    q('#btn_build_import').addEventListener('click', ()=> q('#build_import_file').click());
-    q('#build_import_file').addEventListener('change', onBuildImport);
-    q('#build_rank_max').addEventListener('input', refreshBuildList);
-    q('#build_search').addEventListener('input', refreshBuildList);
-  }
-
-  function onBuildImport(ev){
-    const file=ev.target.files[0]; if(!file) return;
-    const rd=new FileReader(); rd.onload=()=>{
-      try{
-        const json=JSON.parse(rd.result);
-        buildDB.raw=json;
-        buildDB.teams=parseBuild(json);
-        refreshBuildList();
-        showTab('build');
-      }catch(e){ alert('構築記事JSONの読み取りに失敗しました'); }
-    };
-    rd.readAsText(file,'utf-8');
-  }
-
+  // Build tab state
+  const buildDB={raw:null, teams:[]};
   function parseBuild(json){
     let arr=[];
     if(Array.isArray(json)) arr=json;
@@ -239,19 +198,33 @@
     return teams;
   }
 
-  function refreshBuildList(){
-    const wrap=q('#build_cards'); if(!wrap) return; wrap.innerHTML="";
+  function fillPartyEditor(root, party){
+    q('#party_name').value = party.name || "";
+    const cards=Array.from(root.querySelectorAll('.card'));
+    for(let i=0;i<6;i++){
+      const c=cards[i]; if(!c) continue;
+      const m=(party.members||[])[i] || {name:"",nature:"てれや", evs:{}, moves:[]};
+      const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
+      const nat=c.querySelector('[data-nature]'); if(nat){ nat.value=m.nature||'てれや'; }
+      const evk=['hp','atk','def','spa','spd','spe']; evk.forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
+      const mvInputs=c.querySelectorAll('[data-move-input]'); mvInputs.forEach((inp,idx)=>{
+        const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
+        if(mv&&mv.name){ inp.value=mv.name; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=mv.type||""; if(cat) cat.value=mv.category||""; if(p) p.value=mv.power||0; } }
+        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
+      });
+    }
+  }
+
+  function renderBuildCards(){
+    const wrap=q('#build_cards'); wrap.innerHTML="";
     const limit=Number(q('#build_rank_max').value||100);
-    const kw = q('#build_search').value.toString().trim();
-    const teams=buildDB.teams.slice().sort((a,b)=> (a.rank||9999)-(b.rank||9999));
-    const lowerKW = kw.toLowerCase();
+    const kw = q('#build_search').value.toString().trim().toLowerCase();
+    const teams=parseBuild(buildDB.raw||{});
+    buildDB.teams = teams;
     let shown=0;
-    teams.forEach((t,i)=>{
+    teams.sort((a,b)=> (a.rank||9999)-(b.rank||9999)).forEach(t=>{
       if(t.rank && t.rank>limit) return;
-      if(kw){
-        const hit = t.mons.some(m=> m.name && m.name.toLowerCase().includes(lowerKW));
-        if(!hit) return;
-      }
+      if(kw && !t.mons.some(m=> (m.name||"").toLowerCase().includes(kw))) return;
       const card=document.createElement('div'); card.className='team-card';
       const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||""}</td><td>${m.item||""}</td><td>${m.tera||""}</td></tr>`).join('');
       card.innerHTML = `<h4>順位: ${t.rank||'-'}</h4>
@@ -261,36 +234,40 @@
           <button class="btn" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
         </div>`;
       card.querySelector('[data-apply-party]').addEventListener('click', ()=>{
-        const party={name:`Rank${t.rank}`, members:t.mons.map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
+        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
         fillPartyEditor(q('#party'), party);
-        showTab('party');
+        q('.tab[data-tab="party"]').click();
       });
       card.querySelector('[data-apply-opp]').addEventListener('click', ()=>{
         const cards=Array.from(document.querySelectorAll('#opp .card'));
-        t.mons.slice(0,6).forEach((m,i)=>{ const input=cards[i]?.querySelector('[data-poke-input]'); if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); } });
-        showTab('six');
+        (t.mons||[]).slice(0,6).forEach((m,i)=>{
+          const input=cards[i]?.querySelector('[data-poke-input]');
+          if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
+        });
+        q('.tab[data-tab="six"]').click();
       });
-      wrap.appendChild(card);
-      shown++;
+      wrap.appendChild(card); shown++;
     });
-    const cnt=q('#build_count'); if(cnt) cnt.textContent = `表示 ${shown} 件 / 読込 ${buildDB.teams.length} 件`;
+    q('#build_count').textContent = `表示 ${shown} 件 / 読込 ${teams.length} 件`;
   }
 
-  function readMonFromPanel(panel){
+  function readMon(panel){
     const name=panel.querySelector('[data-poke-input]')?.value?.trim()||"";
     const nat=panel.querySelector('[data-nature]')?.value||'てれや';
     const ev={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> ev[k]=Number(panel.querySelector('[data-ev-'+k+']')?.value||0));
-    const stat=statBlock(name,ev,nat,50,31);
+    const info=pokeInfo(name);
+    const base=info?info.base:{}; // for debug
+    const s=statBlock(name,ev,nat,50,31);
     const moves=Array.from(panel.querySelectorAll('[data-move-input]')).map(x=>x.value.trim()).filter(Boolean);
-    return {name, stat, moves};
+    return {name, stat:s, moves};
   }
 
   function pct(min,max,hp){ const a=Math.max(0,Math.min(100,Math.round(100*min/Math.max(1,hp)))); const b=Math.max(0,Math.min(100,Math.round(100*max/Math.max(1,hp)))); return [a,b]; }
 
   function calcSixMatrix(){
-    const env={level:50, teraType:q('#sel_tera').value||null, weather:q('#sel_weather').value||null, critical:q('#chk_crit').checked, item:q('#sel_item').value||null, ability:q('#sel_ability').value||null, screen:q('#chk_screen').checked, format:'シングル'};
+    const env={}; // read directly inside bestMoveDamage
     const selfCards=Array.from(document.querySelectorAll('#self .card')), oppCards=Array.from(document.querySelectorAll('#opp .card'));
-    const selfMons=selfCards.map(readMonFromPanel), oppMons=oppCards.map(readMonFromPanel);
+    const selfMons=selfCards.map(readMon), oppMons=oppCards.map(readMon);
     const mat=q('#matrix tbody'); mat.innerHTML=''; const thead=q('#matrix thead tr'); thead.innerHTML='<th>→</th>'+oppMons.map(m=>`<th>${m.name||'-'}</th>`).join('');
 
     selfMons.forEach(A=>{
@@ -309,9 +286,78 @@
     });
   }
 
+  function init(){
+    document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(u=>u.setAttribute('aria-selected', u===t?'true':'false'));
+      document.querySelectorAll('.panel').forEach(p=>p.setAttribute('aria-hidden', p.id===t.dataset.tab?'false':'true'));
+    }));
+    document.querySelector('.tab[data-tab="build"]').click();
+
+    buildDatalist('dl_moves', []);
+    buildDatalist('dl_pokemon', []);
+
+    // Sections
+    const TYPES_HTML=window.TYPES_HTML;
+    buildSix(); buildParty(); wireCommonInputs(document);
+
+    // Build tab events
+    q('#btn_build_import').addEventListener('click', ()=> q('#build_import_file').click());
+    q('#build_import_file').addEventListener('change', ev=>{
+      const file=ev.target.files[0]; if(!file) return;
+      const rd=new FileReader(); rd.onload=()=>{
+        try{ const json=JSON.parse(rd.result); window._build_raw=json; renderBuildCards(); }
+        catch(e){ alert('構築記事JSONの読み取りに失敗しました'); }
+      }; rd.readAsText(file,'utf-8');
+    });
+    q('#build_rank_max').addEventListener('input', renderBuildCards);
+    q('#build_search').addEventListener('input', renderBuildCards);
+
+    // 6x6 import
+    const fi=q('#team_file'), bt=q('#btn_team_import');
+    bt.addEventListener('click', ()=> fi.click());
+    fi.addEventListener('change', ev=>{
+      const file=ev.target.files[0]; if(!file) return;
+      const rd=new FileReader(); rd.onload=()=>{
+        try{
+          const json=JSON.parse(rd.result);
+          const teams=parseBuild(json);
+          if(!teams.length){ alert('有効なチームが見つかりませんでした'); return; }
+          const picker=document.getElementById('opp_picker');
+          const sel=document.getElementById('opp_picker_select');
+          sel.innerHTML="";
+          teams.forEach((t,idx)=>{
+            const o=document.createElement('option'); o.value=idx; o.textContent=`順位${t.rank||'-'}: ${t.mons.map(m=>m.name).filter(Boolean).slice(0,3).join(' / ')}…`; sel.appendChild(o);
+          });
+          picker.style.display='flex';
+          document.getElementById('opp_picker_apply').onclick=()=>{
+            const i=Number(sel.value||0);
+            const cards=Array.from(document.querySelectorAll('#opp .card'));
+            (teams[i].mons||[]).slice(0,6).forEach((m,idx)=>{
+              const input=cards[idx]?.querySelector('[data-poke-input]');
+              if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
+            });
+            picker.style.display='none';
+            document.querySelector('.tab[data-tab="six"]').click();
+          };
+        }catch(e){ alert('JSONの形式を読み取れませんでした'); }
+      }; rd.readAsText(file,'utf-8');
+    });
+
+    document.getElementById('btn_calc_all_top').addEventListener('click', calcSixMatrix);
+    document.getElementById('btn_calc_all').addEventListener('click', calcSixMatrix);
+  }
+
+  // expose helpers
+  window.TYPE_CHART=TYPE_CHART;
+  window.TYPES_HTML=TYPES_HTML;
+
   document.addEventListener('DOMContentLoaded', async ()=>{
     await loadData();
-    build();
-    document.querySelector('#btn_calc_all').addEventListener('click', calcSixMatrix);
+    // recreate datalists after data load
+    const dlm=document.getElementById('dl_moves'); if(dlm) dlm.remove();
+    const dlp=document.getElementById('dl_pokemon'); if(dlp) dlp.remove();
+    buildDatalist('dl_moves', (moveDB.list.map(m=>m.n||m.name).filter(Boolean).sort()));
+    buildDatalist('dl_pokemon', pokeDB.displayNames);
+    init();
   });
 })();
