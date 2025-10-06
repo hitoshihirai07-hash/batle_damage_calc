@@ -25,7 +25,7 @@
 
   const moveDB={list:[]};
   const pokeDB={map:new Map(), displayNames:[]};
-  const NAME_ALIAS={'Ho-Oh':'ホウオウ','ho-oh':'ホウオウ','HOUOU':'ホウオウ'};
+
   function normName(s){return (s||'').toString().trim().replace(/[\\s・]/g,'').toLowerCase();}
 
   async function loadData(){
@@ -35,19 +35,27 @@
       const arr = Array.isArray(pk)? pk : (pk.pokemon||pk.data||[]);
       const dispSet = new Set();
       arr.forEach(p=>{
-        const jp=(p.name||p.jp||p.ja||p["日本語名"]||"").toString().trim();
-        const en=(p.en||p.eng||p["英語名"]||"").toString().trim();
-        const types=p.types||p.type||p["タイプ"]||[];
-        const base=p.base||p.stats||p["種族値"]||{};
-        if(jp){ pokeDB.map.set(jp,{types,base}); dispSet.add(jp); }
-        if(en){ pokeDB.map.set(en,{types,base}); dispSet.add(en); }
+        const name = (p["名前"]||p["日本語名"]||p["name"]||p["jp"]||"").toString().trim();
+        if(!name) return;
+        const t1 = (p["タイプ1"]||"").toString().trim();
+        const t2raw = p.hasOwnProperty("タイプ2") ? p["タイプ2"] : "";
+        const t2 = (t2raw===null || typeof t2raw==="undefined") ? "" : (""+t2raw).trim();
+        const base = {
+          hp: Number(p["HP"]||0),
+          atk: Number(p["攻撃"]||0),
+          def: Number(p["防御"]||0),
+          spa: Number(p["特攻"]||0),
+          spd: Number(p["特防"]||0),
+          spe: Number(p["素早"]||0),
+        };
+        const types = (t2? [t1,t2] : [t1]).filter(Boolean);
+        pokeDB.map.set(name,{types,base});
+        dispSet.add(name);
+        // 正規化キー（検索許容）
+        const nn = normName(name);
+        if(!pokeDB.map.has(nn)) pokeDB.map.set(nn,{types,base});
       });
-      // alias & normalized keys（ただし displayNames には追加しない）
-      const keys=[...pokeDB.map.keys()];
-      keys.forEach(n=>{ const nn=normName(n); if(!pokeDB.map.has(nn)) pokeDB.map.set(nn, pokeDB.map.get(n)); });
-      Object.keys(NAME_ALIAS).forEach(k=>{ const v=NAME_ALIAS[k]; const tgt=pokeDB.map.get(v)||pokeDB.map.get(normName(v)); if(tgt){ pokeDB.map.set(k,tgt); pokeDB.map.set(normName(k),tgt);} });
       pokeDB.displayNames = Array.from(dispSet).sort();
-      // counters
       const c = document.querySelector("#data_counts");
       if(c){ c.textContent = `データ: ポケモン ${pokeDB.displayNames.length} / 技 ${moveDB.list.length}`; }
     }catch(e){ console.error(e); }
@@ -79,8 +87,12 @@
     arr.forEach(v=>{ const o=document.createElement('option'); o.value=v; frag.appendChild(o); });
     dl.appendChild(frag); document.body.appendChild(dl);
   }
+
   function moveByName(n){ n=(n||'').trim(); return moveDB.list.find(m=>(m.n||m.name)===n); }
-  function pokeInfo(n){ const key=(n||'').trim(); return pokeDB.map.get(key)||pokeDB.map.get(normName(key))||pokeDB.map.get(NAME_ALIAS[key])||pokeDB.map.get(normName(NAME_ALIAS[key]||'')); }
+  function pokeInfo(n){
+    const key=(n||'').trim();
+    return pokeDB.map.get(key) || pokeDB.map.get(normName(key));
+  }
 
   function statBlock(name,evs,nature,lv=50,iv=31){
     const info=pokeInfo(name); if(!info||!info.base||Object.keys(info.base).length===0) return {_unknown:true,types:[],hp:1,atk:1,def:1,spa:1,spd:1,spe:1};
@@ -97,15 +109,8 @@
   }
 
   function presetEV(name){ const m={"H252B252":{hp:252,def:252,spd:4},"H252D252":{hp:252,spd:252,def:4},"A252S252":{atk:252,spe:252,hp:4},"C252S252":{spa:252,spe:252,hp:4}}; return m[name]||{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}; }
-
   function q(s,r){return (r||document).querySelector(s)}; function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
-
-  function applyTypeChips(panel, types){
-    const box = q('[data-typechips]', panel);
-    if(!box) return;
-    box.innerHTML = "";
-    (types||[]).forEach(t=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=t; box.appendChild(span); });
-  }
+  function applyTypeChips(panel, types){ const box = q('[data-typechips]', panel); if(!box) return; box.innerHTML = ""; (types||[]).forEach(t=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=t; box.appendChild(span); }); }
 
   function bestMoveDamage(att,def,env,moves){
     let best=[0,0], name="";
@@ -125,7 +130,6 @@
     buildDatalist('dl_moves', (moveDB.list.map(m=>m.n||m.name).filter(Boolean).sort()));
     buildDatalist('dl_pokemon', pokeDB.displayNames);
 
-    // wire inputs
     qa('[data-move-input]').forEach(inp=>{
       inp.setAttribute('list','dl_moves');
       inp.addEventListener('change',()=>{
@@ -149,7 +153,6 @@
       ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=q('[data-ev-'+k+']',row); if(el) el.value=ev[k]||0; });
     }));
 
-    // local team import
     const fi=q('#team_file'), bt=q('#btn_team_import');
     if(fi&&bt){
       bt.addEventListener('click', ()=>fi.click());
@@ -192,9 +195,7 @@
           const [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp); td.textContent=`${mi}-${ma}%`; td.title=best.name||'';
         }else if(A.name && B.name && (A.stat._unknown || B.stat._unknown)){
           td.textContent='—//?'; td.title='ポケモンデータ未登録';
-        }else{
-          td.textContent='—//0';
-        }
+        }else{ td.textContent='—//0'; }
         tr.appendChild(td);
       });
       mat.appendChild(tr);
