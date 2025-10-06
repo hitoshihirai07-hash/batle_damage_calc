@@ -1,154 +1,33 @@
 
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Battle Damage Calc (BDC)</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <div class="brand">Battle Damage Calc <span class="badge">BDC</span></div>
-      <div class="small">v1 最小構成 / 6×6対応 / ローカルのみ</div>
-    </div>
-
-    <div class="tabs">
-      <div class="tab" data-tab="six" aria-selected="true">6×6 プランナー</div>
-      <div class="tab" data-tab="party">パーティ</div>
-      <div class="tab" data-tab="calc">ダメージ計算（単体）</div>
-    </div>
-
-    <!-- 6×6 -->
-    <div class="panel" id="six" aria-hidden="false">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <div class="row">
-          <label>天候</label>
-          <select id="sel_weather">
-            <option value="">なし</option><option>雨</option><option>晴れ</option>
-          </select>
-          <label>画面</label><input type="checkbox" id="chk_screen" />
-          <label>急所</label><input type="checkbox" id="chk_crit" />
-          <label>テラ</label>
-          <select id="sel_tera">
-            <option value="">なし</option>
-            <option>ノーマル</option><option>ほのお</option><option>みず</option><option>でんき</option><option>くさ</option><option>こおり</option><option>かくとう</option><option>どく</option><option>じめん</option><option>ひこう</option><option>エスパー</option><option>むし</option><option>いわ</option><option>ゴースト</option><option>ドラゴン</option><option>あく</option><option>はがね</option><option>フェアリー</option>
-          </select>
-          <label>持ち物</label>
-          <select id="sel_item">
-            <option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option><option>とつげきチョッキ</option>
-          </select>
-          <label>特性</label>
-          <select id="sel_ability">
-            <option value="">なし</option><option>てきおうりょく</option><option>もらいび</option>
-          </select>
-        </div>
-        <button class="btn" id="btn_calc_all">一括計算</button>
-      </div>
-
-      <div class="grid2">
-        <!-- Self team -->
-        <div id="self">
-          <h3>自分</h3>
-          <div class="small">各枠：名前 → 技（必要分）→ EVプリセット</div>
-          <div class="cards"></div>
-        </div>
-        <!-- Opp team -->
-        <div id="opp">
-          <h3>相手</h3>
-          <div class="small">名前のみでもOK（タイプはデータから）</div>
-          <div class="cards"></div>
-        </div>
-      </div>
-
-      <hr />
-      <div style="overflow:auto">
-        <table class="table matrix" id="matrix">
-          <thead><tr><th>→</th><th>相手1</th><th>相手2</th><th>相手3</th><th>相手4</th><th>相手5</th><th>相手6</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Party -->
-    <div class="panel" id="party" aria-hidden="true">
-      <div class="small">6体のテンプレを保存する用途。ここで入力した内容は6×6に手動で転記してください（自動リンクは未実装）。</div>
-      <div class="grid2" id="party_grid"></div>
-    </div>
-
-    <!-- Single calc (simple viewer) -->
-    <div class="panel" id="calc" aria-hidden="true">
-      <div class="small">まずは 6×6 をご利用ください。単体計算は次版で拡張予定。</div>
-    </div>
-
-    <footer class="small">
-      注意：本ビルドは軽量化のため、アイテム/特性/天候などの倍率は代表例のみ実装。最新環境の全要素を網羅していません。<br/>
-      公開名は「Battle Damage Calc（略称：BDC）」とし、任天堂・株ポケ・ゲームフリーク等の非公式ファンツールである旨を明記してください。
-    </footer>
-  </div>
-
-  <script src="./app.js"></script>
-  <script>
-  // Build 6 empty cards for self & opp
-  function cardTemplate(side, idx){
-    return `
-    <div class="card panel" style="display:block" data-side="${side}" data-slot="${idx}">
-      <div class="row">
-        <label>名前</label>
-        <input type="text" data-poke-input placeholder="ポケモン" />
-        <label>性格</label>
-        <select data-nature>
-          <option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option>
-        </select>
-      </div>
-      <div class="row">
-        <span class="pill">EV</span>
-        <input type="number" data-ev-hp   placeholder="H" value="0" />
-        <input type="number" data-ev-atk  placeholder="A" value="0" />
-        <input type="number" data-ev-def  placeholder="B" value="0" />
-        <input type="number" data-ev-spa  placeholder="C" value="0" />
-        <input type="number" data-ev-spd  placeholder="D" value="0" />
-        <input type="number" data-ev-spe  placeholder="S" value="0" />
-        <button class="btn" data-ev-preset="A252S252">A252S252</button>
-        <button class="btn" data-ev-preset="C252S252">C252S252</button>
-        <button class="btn" data-ev-preset="H252B252">H252B252</button>
-        <button class="btn" data-ev-preset="H252D252">H252D252</button>
-      </div>
-      ${side==="self" ? `
-      <div class="row">
-        <label>技1</label><input type="text" data-move-input placeholder="技名" />
-        <select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select>
-        <select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select>
-        <input type="number" data-move-pow placeholder="威力" />
-      </div>
-      <div class="row">
-        <label>技2</label><input type="text" data-move-input placeholder="技名" />
-        <select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select>
-        <select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select>
-        <input type="number" data-move-pow placeholder="威力" />
-      </div>
-      <div class="row">
-        <label>技3</label><input type="text" data-move-input placeholder="技名" />
-        <select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select>
-        <select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select>
-        <input type="number" data-move-pow placeholder="威力" />
-      </div>
-      <div class="row">
-        <label>技4</label><input type="text" data-move-input placeholder="技名" />
-        <select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select>
-        <select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select>
-        <input type="number" data-move-pow placeholder="威力" />
-      </div>` : ``}
-    </div>`;
-  }
-  function TYPES_HTML(){ 
-    return ["ノーマル","ほのお","みず","でんき","くさ","こおり","かくとう","どく","じめん","ひこう","エスパー","むし","いわ","ゴースト","ドラゴン","あく","はがね","フェアリー"].map(t=>`<option>${t}</option>`).join("");
-  }
-  const selfWrap = document.querySelector("#self .cards");
-  const oppWrap  = document.querySelector("#opp .cards");
-  for(let i=1;i<=6;i++){ selfWrap.insertAdjacentHTML("beforeend", cardTemplate("self", i)); }
-  for(let i=1;i<=6;i++){ oppWrap.insertAdjacentHTML("beforeend",  cardTemplate("opp",  i)); }
-  </script>
-</body>
-</html>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Battle Damage Calc (BDC)</title><link rel="stylesheet" href="./styles.css"/></head>
+<body><div class="wrap"><div class="header"><div class="brand">Battle Damage Calc <span class="badge">BDC</span></div><div class="small">v2 最小構成 / 6×6対応</div></div>
+<div class="tabs"><div class="tab" data-tab="six" aria-selected="true">6×6 プランナー</div><div class="tab" data-tab="party">パーティ</div><div class="tab" data-tab="calc">単体</div></div>
+<div class="panel" id="six" aria-hidden="false">
+ <div class="row" style="justify-content:space-between;align-items:center">
+  <div class="row"><label>天候</label><select id="sel_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select>
+   <label>壁</label><input type="checkbox" id="chk_screen"/><label>急所</label><input type="checkbox" id="chk_crit"/>
+   <label>テラ</label><select id="sel_tera"><option value="">なし</option><option>ノーマル</option><option>ほのお</option><option>みず</option><option>でんき</option><option>くさ</option><option>こおり</option><option>かくとう</option><option>どく</option><option>じめん</option><option>ひこう</option><option>エスパー</option><option>むし</option><option>いわ</option><option>ゴースト</option><option>ドラゴン</option><option>あく</option><option>はがね</option><option>フェアリー</option></select>
+   <label>持ち物</label><select id="sel_item"><option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option></select>
+   <label>特性</label><select id="sel_ability"><option value="">なし</option><option>てきおうりょく</option><option>もらいび</option></select></div>
+  <button class="btn" id="btn_calc_all">一括計算</button></div>
+ <div class="grid2"><div id="self"><h3>自分</h3><div class="small">名前→技を1つ以上。EVプリセット可</div><div class="cards"></div></div><div id="opp"><h3>相手</h3><div class="small">名前だけでもOK（未登録は —//? 表示）</div><div class="cards"></div></div></div>
+ <hr/><div style="overflow:auto"><table class="table matrix" id="matrix"><thead><tr><th>→</th><th>相手1</th><th>相手2</th><th>相手3</th><th>相手4</th><th>相手5</th><th>相手6</th></tr></thead><tbody></tbody></table></div>
+</div>
+<div class="panel" id="party" aria-hidden="true"><div class="small">テンプレ保存用（次版で6×6と連動予定）</div><div class="grid2" id="party_grid"></div></div>
+<div class="panel" id="calc" aria-hidden="true"><div class="small">先に6×6をご利用ください。</div></div>
+</div>
+<script src="./app.js"></script>
+<script>
+function TYPES_HTML(){return ["ノーマル","ほのお","みず","でんき","くさ","こおり","かくとう","どく","じめん","ひこう","エスパー","むし","いわ","ゴースト","ドラゴン","あく","はがね","フェアリー"].map(t=>`<option>${t}</option>`).join("")}
+function cardTemplate(side,idx){return `<div class="card panel" style="display:block" data-side="${side}" data-slot="${idx}">
+ <div class="row"><label>名前</label><input type="text" data-poke-input placeholder="ポケモン"/><label>性格</label><select data-nature><option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option></select></div>
+ <div class="row"><span class="pill">EV</span><input type="number" data-ev-hp placeholder="H" value="0"/><input type="number" data-ev-atk placeholder="A" value="0"/><input type="number" data-ev-def placeholder="B" value="0"/><input type="number" data-ev-spa placeholder="C" value="0"/><input type="number" data-ev-spd placeholder="D" value="0"/><input type="number" data-ev-spe placeholder="S" value="0"/>
+ <button class="btn" data-ev-preset="A252S252">A252S252</button><button class="btn" data-ev-preset="C252S252">C252S252</button><button class="btn" data-ev-preset="H252B252">H252B252</button><button class="btn" data-ev-preset="H252D252">H252D252</button></div>
+ ${side==="self"?`<div class="row"><label>技1</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>
+ <div class="row"><label>技2</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>
+ <div class="row"><label>技3</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>
+ <div class="row"><label>技4</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>`:``}
+</div>`}
+const selfWrap=document.querySelector("#self .cards"), oppWrap=document.querySelector("#opp .cards"); for(let i=1;i<=6;i++){ selfWrap.insertAdjacentHTML("beforeend", cardTemplate("self", i)); } for(let i=1;i<=6;i++){ oppWrap.insertAdjacentHTML("beforeend", cardTemplate("opp", i)); }
+</script>
+</body></html>
