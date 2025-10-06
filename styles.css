@@ -14,3 +14,5 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 .small{font-size:12px;color:#9ca3af}.pill{padding:4px 8px;border:1px solid var(--br);border-radius:9999px;font-size:12px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}.chip{padding:2px 6px;border:1px solid var(--br);border-radius:9999px;font-size:12px;color:#cbd5e1;background:#0f172a}
 .counter{color:#9ca3af;font-size:12px}
+.cards .card{margin-bottom:10px}
+.divider{height:1px;background:var(--br);margin:10px 0}
