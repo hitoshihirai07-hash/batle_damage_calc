@@ -1,20 +1,30 @@
 
 <!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Battle Damage Calc (BDC)</title><link rel="stylesheet" href="./styles.css"/></head>
-<body><div class="wrap"><div class="header"><div class="brand">Battle Damage Calc <span class="badge">BDC</span></div><div class="small">v2 最小構成 / 6×6対応</div></div>
+<body><div class="wrap"><div class="header"><div class="brand">Battle Damage Calc <span class="badge">BDC</span></div><div class="small">最小依存 / フルDB</div></div>
 <div class="tabs"><div class="tab" data-tab="six" aria-selected="true">6×6 プランナー</div><div class="tab" data-tab="party">パーティ</div><div class="tab" data-tab="calc">単体</div></div>
 <div class="panel" id="six" aria-hidden="false">
- <div class="row" style="justify-content:space-between;align-items:center">
-  <div class="row"><label>天候</label><select id="sel_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select>
-   <label>壁</label><input type="checkbox" id="chk_screen"/><label>急所</label><input type="checkbox" id="chk_crit"/>
-   <label>テラ</label><select id="sel_tera"><option value="">なし</option><option>ノーマル</option><option>ほのお</option><option>みず</option><option>でんき</option><option>くさ</option><option>こおり</option><option>かくとう</option><option>どく</option><option>じめん</option><option>ひこう</option><option>エスパー</option><option>むし</option><option>いわ</option><option>ゴースト</option><option>ドラゴン</option><option>あく</option><option>はがね</option><option>フェアリー</option></select>
-   <label>持ち物</label><select id="sel_item"><option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option></select>
-   <label>特性</label><select id="sel_ability"><option value="">なし</option><option>てきおうりょく</option><option>もらいび</option></select></div>
-  <button class="btn" id="btn_calc_all">一括計算</button></div>
- <div class="grid2"><div id="self"><h3>自分</h3><div class="small">名前→技を1つ以上。EVプリセット可</div><div class="cards"></div></div><div id="opp"><h3>相手</h3><div class="small">名前だけでもOK（未登録は —//? 表示）</div><div class="cards"></div></div></div>
- <hr/><div style="overflow:auto"><table class="table matrix" id="matrix"><thead><tr><th>→</th><th>相手1</th><th>相手2</th><th>相手3</th><th>相手4</th><th>相手5</th><th>相手6</th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <div class="row">
+      <label>天候</label><select id="sel_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select>
+      <label>壁</label><input type="checkbox" id="chk_screen"/><label>急所</label><input type="checkbox" id="chk_crit"/>
+      <label>テラ</label><select id="sel_tera"><option value="">なし</option><option>ノーマル</option><option>ほのお</option><option>みず</option><option>でんき</option><option>くさ</option><option>こおり</option><option>かくとう</option><option>どく</option><option>じめん</option><option>ひこう</option><option>エスパー</option><option>むし</option><option>いわ</option><option>ゴースト</option><option>ドラゴン</option><option>あく</option><option>はがね</option><option>フェアリー</option></select>
+      <label>持ち物</label><select id="sel_item"><option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option></select>
+      <label>特性</label><select id="sel_ability"><option value="">なし</option><option>てきおうりょく</option><option>もらいび</option></select>
+    </div>
+    <div class="row">
+      <input type="file" id="team_file" accept=".json" style="display:none"/>
+      <button class="btn" id="btn_team_import">相手: 構築JSONを読み込む（ローカル）</button>
+      <button class="btn" id="btn_calc_all">一括計算</button>
+    </div>
+  </div>
+  <div class="grid2">
+    <div id="self"><h3>自分</h3><div class="small">名前→技を1つ以上。EVプリセット可</div><div class="cards"></div></div>
+    <div id="opp"><h3>相手</h3><div class="small">名前だけでもOK（未登録は —//? 表示）</div><div class="cards"></div></div>
+  </div>
+  <hr/><div style="overflow:auto"><table class="table matrix" id="matrix"><thead><tr><th>→</th><th>相手1</th><th>相手2</th><th>相手3</th><th>相手4</th><th>相手5</th><th>相手6</th></tr></thead><tbody></tbody></table></div>
 </div>
-<div class="panel" id="party" aria-hidden="true"><div class="small">テンプレ保存用（次版で6×6と連動予定）</div><div class="grid2" id="party_grid"></div></div>
-<div class="panel" id="calc" aria-hidden="true"><div class="small">先に6×6をご利用ください。</div></div>
+<div class="panel" id="party" aria-hidden="true"><div class="small">テンプレ保存用（次版で6×6と連動予定）</div></div>
+<div class="panel" id="calc" aria-hidden="true"><div class="small">まずは 6×6 をご利用ください。</div></div>
 </div>
 <script src="./app.js"></script>
 <script>
@@ -28,6 +38,6 @@ function cardTemplate(side,idx){return `<div class="card panel" style="display:b
  <div class="row"><label>技3</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>
  <div class="row"><label>技4</label><input type="text" data-move-input placeholder="技名"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option></select><input type="number" data-move-pow placeholder="威力"/></div>`:``}
 </div>`}
-const selfWrap=document.querySelector("#self .cards"), oppWrap=document.querySelector("#opp .cards"); for(let i=1;i<=6;i++){ selfWrap.insertAdjacentHTML("beforeend", cardTemplate("self", i)); } for(let i=1;i<=6;i++){ oppWrap.insertAdjacentHTML("beforeend", cardTemplate("opp", i)); }
+const selfWrap=document.querySelector('#self .cards'), oppWrap=document.querySelector('#opp .cards'); for(let i=1;i<=6;i++){ selfWrap.insertAdjacentHTML('beforeend', cardTemplate('self', i)); } for(let i=1;i<=6;i++){ oppWrap.insertAdjacentHTML('beforeend', cardTemplate('opp', i)); }
 </script>
 </body></html>
