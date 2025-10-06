@@ -16,3 +16,8 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 .counter{color:#9ca3af;font-size:12px}
 .cards .card{margin-bottom:10px}
 .divider{height:1px;background:var(--br);margin:10px 0}
+.team-card{border:1px solid var(--br);border-radius:10px;padding:10px;margin:8px 0;background:#0f172a}
+.team-card h4{margin:0 0 6px 0}
+.team-table{width:100%;border-collapse:collapse}
+.team-table th,.team-table td{border:1px solid var(--br);padding:4px 6px;text-align:left;font-size:13px}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}

@@ -2,9 +2,25 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Battle Damage Calc (BDC)</title><link rel="stylesheet" href="./styles.css"/></head>
 <body><div class="wrap">
   <div class="header"><div class="brand">Battle Damage Calc <span class="badge">BDC</span></div><div id="data_counts" class="counter">データ: 読み込み中…</div></div>
-  <div class="tabs"><div class="tab" data-tab="six" aria-selected="true">6×6 プランナー</div><div class="tab" data-tab="party">パーティ</div><div class="tab" data-tab="calc">単体</div></div>
+  <div class="tabs">
+    <div class="tab" data-tab="build" aria-selected="true">構築記事</div>
+    <div class="tab" data-tab="six" aria-selected="false">6×6 プランナー</div>
+    <div class="tab" data-tab="party" aria-selected="false">パーティ</div>
+    <div class="tab" data-tab="calc" aria-selected="false">単体</div>
+  </div>
 
-  <div class="panel" id="six" aria-hidden="false">
+  <div class="panel" id="build" aria-hidden="false">
+    <div class="filters">
+      <input type="file" id="build_import_file" accept=".json" style="display:none"/>
+      <button class="btn" id="btn_build_import">構築JSONを読み込む（ローカル）</button>
+      <label>ランク上限</label><input type="number" id="build_rank_max" value="100" min="1" step="1"/>
+      <label>ポケモン検索</label><input type="text" id="build_search" placeholder="例: カイリュー"/>
+      <span id="build_count" class="small">表示 0 件 / 読込 0 件</span>
+    </div>
+    <div id="build_cards"></div>
+  </div>
+
+  <div class="panel" id="six" aria-hidden="true">
     <div class="row" style="justify-content:space-between;align-items:center">
       <div class="row">
         <label>天候</label><select id="sel_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select>
