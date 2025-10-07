@@ -881,3 +881,101 @@ function collectParty(root){
   });
 })();
 ;
+
+
+// v29: force overlay timer + robust 6x6 EV presets injection
+(function(){
+  // ---- Timer (overlay, always visible) ----
+  function ensureTimer(){
+    if(document.getElementById('bdc_timer')) return;
+    const div=document.createElement('div');
+    div.id='bdc_timer';
+    div.innerHTML=`<div class="face" id="bdc_face">20:00.0</div>
+      <button id="bdc_start">開始</button>
+      <button id="bdc_pause">一時停止</button>
+      <button id="bdc_reset">リセット</button>
+      <button id="bdc_q20">20分に設定</button>
+      <span class="inputs"><label>分</label><input type="number" id="bdc_min" value="20" min="0" style="width:70px"/>
+      <label>秒</label><input type="number" id="bdc_sec" value="0" min="0" max="59" style="width:70px"/>
+      <button id="bdc_set">設定</button></span>`;
+    document.body.appendChild(div);
+    let target=20*60*1000, remain=target, running=false, last=0, raf=0;
+    const face=div.querySelector('#bdc_face'), bS=div.querySelector('#bdc_start'), bP=div.querySelector('#bdc_pause'),
+          bR=div.querySelector('#bdc_reset'), bQ=div.querySelector('#bdc_q20'), bSet=div.querySelector('#bdc_set'),
+          inM=div.querySelector('#bdc_min'), inS=div.querySelector('#bdc_sec');
+    const fmt=(ms)=>{const t=Math.max(0,Math.floor(ms));const ds=Math.floor((t%1000)/100);const s=Math.floor(t/1000)%60;const m=Math.floor(t/60000);return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${ds}`};
+    const draw=()=> face.textContent=fmt(remain);
+    const loop=(ts)=>{ if(!running) return; if(!last) last=ts; const dt=ts-last; last=ts; remain=Math.max(0,remain-dt); draw(); if(remain<=0){ running=false; try{const a=new AudioContext(); const o=a.createOscillator(); o.connect(a.destination); o.frequency.value=880; o.start(); setTimeout(()=>{o.stop();a.close()},200);}catch(_){} } else { raf=requestAnimationFrame(loop);} };
+    bS.onclick=()=>{ if(!running){ running=true; last=0; raf=requestAnimationFrame(loop);} };
+    bP.onclick=()=>{ running=false; cancelAnimationFrame(raf); draw(); };
+    bR.onclick=()=>{ running=false; cancelAnimationFrame(raf); remain=target; draw(); };
+    bQ.onclick=()=>{ running=false; cancelAnimationFrame(raf); target=20*60*1000; remain=target; inM.value=20; inS.value=0; draw(); };
+    bSet.onclick=()=>{ const m=Math.max(0,Number(inM.value||0)); const s=Math.max(0,Math.min(59,Number(inS.value||0))); running=false; cancelAnimationFrame(raf); target=(m*60+s)*1000; remain=target; draw(); };
+    draw();
+  }
+  // ---- 6x6 EV presets (HA/AS/HB/HD/CS/BD/HC) ----
+  const CODES=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+  function inject6x6(){
+    const root=document.getElementById('six'); if(!root) return;
+    // find candidate cards: any container with at least 6 numeric inputs -> treat as EV row holder
+    const cards=[...root.querySelectorAll('.card, fieldset, .panel, .box')];
+    cards.forEach(card=>{
+      const nums=card.querySelectorAll('input[type="number"]');
+      if(nums.length<6) return;
+      // avoid duplicate
+      if(card.querySelector('.evbar7')) return;
+      const bar=document.createElement('div'); bar.className='evbar7';
+      CODES.forEach(code=>{ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); });
+      // insert near top of card
+      const anchor=card.querySelector('h3,h4,.header,.title')||card.firstChild;
+      if(anchor && anchor.parentNode===card) anchor.after(bar); else card.prepend(bar);
+    });
+    // delegation
+    root.addEventListener('click', (e)=>{
+      const btn=e.target.closest('[data-evp]'); if(!btn) return;
+      const card=btn.closest('.card, fieldset, .panel, .box')||root;
+      const inputs=findEVInputs(card);
+      const ev=map(code=btn.dataset.evp);
+      // reset
+      Object.values(inputs).forEach(el=>{ if(el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+      // apply
+      Object.keys(ev).forEach(k=>{ const el=inputs[k]; if(el){ el.value=ev[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+      // +4 to HP if room
+      let total=0; Object.values(inputs).forEach(el=> total+=Number(el&&el.value||0));
+      if(total<=504 && inputs.hp){ inputs.hp.value=Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+    }, {once:false});
+  }
+  function map(code){
+    return {'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252}, 'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+            'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252}, 'HC252':{hp:252,spa:252}}[code]||{};
+  }
+  function findEVInputs(card){
+    const res={};
+    const ph={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
+    for(const k in ph){
+      const el=card.querySelector(`input[placeholder="${ph[k]}"]`); if(el) res[k]=el;
+    }
+    const scan = card.querySelectorAll('input[type="number"],input[type="text"]');
+    scan.forEach(el=>{
+      const key=((el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'')).toLowerCase();
+      if(!res.hp  && (key.includes('ev_h')||key.includes('hp')||key.match(/(^|\\s)h(\\s|$)/))) res.hp=el;
+      if(!res.atk && (key.includes('ev_a')||key.includes('atk')||key.includes('こうげき'))) res.atk=el;
+      if(!res.def && (key.includes('ev_b')||key.includes('def')||key.includes('ぼうぎょ'))) res.def=el;
+      if(!res.spa && (key.includes('ev_c')||key.includes('spa')||key.includes('とくこう')||key.match(/(^|\\s)c(\\s|$)/))) res.spa=el;
+      if(!res.spd && (key.includes('ev_d')||key.includes('spd')||key.includes('とくぼう')||key.match(/(^|\\s)d(\\s|$)/))) res.spd=el;
+      if(!res.spe && (key.includes('ev_s')||key.includes('spe')||key.includes('すばやさ')||key.includes('素早'))) res.spe=el;
+    });
+    if(Object.values(res).filter(Boolean).length<6){
+      const rows=[...card.querySelectorAll('.row, .ev-row, fieldset, .grid')];
+      for(const row of rows){
+        const nums=row.querySelectorAll('input[type="number"]');
+        if(nums.length>=6){ const order=['hp','atk','def','spa','spd','spe']; order.forEach((k,i)=>{ if(!res[k]&&nums[i]) res[k]=nums[i]; }); break; }
+      }
+    }
+    return res;
+  }
+
+  // boot
+  ensureTimer();
+  const iv=setInterval(()=>{ const six=document.getElementById('six'); if(six){ clearInterval(iv); inject6x6(); } }, 250);
+})();

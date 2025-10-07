@@ -89,3 +89,16 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 .timer-btn{padding:6px 10px}
 .timer-input{display:flex;gap:6px;align-items:center}
 .timer-input input{width:70px}
+
+/* v29: fixed header timer */
+#bdc_timer{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:1000;
+  display:flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--br);
+  background:#0b1220;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#bdc_timer .face{font-size:26px;font-weight:800;padding:2px 10px;border:1px solid var(--br);border-radius:8px;background:#0f172a}
+#bdc_timer button{padding:6px 10px}
+#bdc_timer .inputs{display:flex;gap:6px;align-items:center}
+/* hide any legacy preset clusters we don't want */
+.legacy-timer,.legacy-presets,.timer-log{display:none!important}
+/* style for injected 6x6 ev bar */
+.evbar7{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.evbar7 .btn{padding:4px 8px;border:1px solid var(--br);background:#132034;border-radius:8px}
