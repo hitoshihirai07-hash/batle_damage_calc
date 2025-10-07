@@ -382,6 +382,17 @@
   }
 
   function pct(min,max,hp){ const a=Math.max(0,Math.min(100,Math.round(100*min/Math.max(1,hp)))); const b=Math.max(0,Math.min(100,Math.round(100*max/Math.max(1,hp)))); return [a,b]; }
+  function koLabel(min,max,hp){
+    if(hp<=0) return {label:'',cls:''};
+    if(min>=hp) return {label:'確1',cls:'mtx-ohko'};
+    if(max>=hp) return {label:'乱1',cls:'mtx-ohko'};
+    if(min*2>=hp) return {label:'確2',cls:'mtx-thko2'};
+    if(max*2>=hp) return {label:'乱2',cls:'mtx-thko2'};
+    if(min*3>=hp) return {label:'確3',cls:'mtx-thko3'};
+    if(max*3>=hp) return {label:'乱3',cls:'mtx-thko3'};
+    return {label:'耐',cls:'mtx-chip'};
+  }
+
 
   function calcSixMatrix(){
     const selfCards=Array.from(document.querySelectorAll('#self .card')), oppCards=Array.from(document.querySelectorAll('#opp .card'));
@@ -396,11 +407,13 @@
           let [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp);
           let dmin = best.dmg[0], dmax = best.dmg[1];
           if(best.mul===0){ mi=0; ma=0; dmin=0; dmax=0; }
-          td.textContent=`${mi}-${ma}% (${dmin}-${dmax})`;
+          const ko = koLabel(dmin,dmax,B.stat.hp);
+          td.classList.add(ko.cls||'');
+          td.innerHTML = `<div class="mtx-pct">${mi}-${ma}% (${dmin}-${dmax}) ${ko.label? '· '+ko.label : ''}</div><div class="mtx-mv">${best.name||''}</div>`;
           const mulText=(best.mul===0?'×0 (無効)': `×${best.mul}`);
           const atkTypes=(A.stat.types||[]).join('/');
           const defTypes=(B.stat.types||[]).join('/');
-          td.title = `${best.name||''} / ${mulText} | 攻:${atkTypes} 技:${best.name||''} 防:${defTypes}`;
+          td.title = `${best.name||''} / ${mulText} | 攻:${atkTypes} 防:${defTypes}`;
         }else if(A.name && B.name && (A.stat._unknown || B.stat._unknown)){
           td.textContent='—//?'; td.title='ポケモンデータ未登録';
         }else{ td.textContent='—//0'; }
