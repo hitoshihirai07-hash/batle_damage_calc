@@ -376,8 +376,30 @@
         return {hp:get('_ev_hp'), atk:get('_ev_atk'), def:get('_ev_def'), spa:get('_ev_spa'), spd:get('_ev_spd'), spe:get('_ev_spe')};
       }
       function readNature(prefix){ const el=document.getElementById(prefix+'_nature'); return el? el.value : 'てれや'; }
+      function applyEVPreset(prefix,code){
+        
+        const map={
+          'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+          'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+          'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+          'HC252':{hp:252,spa:252}
+        };
+        const evs=map[code]||{};
+        const ids={'hp':'_ev_hp','atk':'_ev_atk','def':'_ev_def','spa':'_ev_spa','spd':'_ev_spd','spe':'_ev_spe'};
+        // reset all to 0 first
+        for(const k in ids){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=0; }
+        // apply
+        for(const k in evs){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=evs[k]; }
+        // assign 4 to HP if total<508
+        let total=0; for(const k in ids){ const el=document.getElementById(prefix+ids[k]); total+= Number(el&&el.value||0); }
+        if(total<=504){ const hpEl=document.getElementById(prefix+ids['hp']); if(hpEl) hpEl.value = Number(hpEl.value||0)+4; }
+      
+      }
 
       const btn=document.getElementById('sc_calc');
+      const ap=document.getElementById('sc_a_ev_presets'); const bp=document.getElementById('sc_b_ev_presets');
+      function bindPresetBar(bar,prefix){ if(!bar) return; bar.querySelectorAll('[data-evp]').forEach(b=> b.addEventListener('click', ()=> applyEVPreset(prefix,b.dataset.evp))); }
+      bindPresetBar(ap,'sc_a'); bindPresetBar(bp,'sc_b');
       if(btn){
         btn.addEventListener('click', ()=>{
           const aN=(aName&&aName.value||'').trim(), bN=(bName&&bName.value||'').trim();
@@ -412,10 +434,7 @@
       const btnStart=document.getElementById('tmr_start');
       const btnPause=document.getElementById('tmr_pause');
       const btnReset=document.getElementById('tmr_reset');
-      const btnTurn=document.getElementById('tmr_turn');
-      const btnLap=document.getElementById('tmr_lap');
-      const log=document.getElementById('tmr_log');
-      const beep=document.getElementById('tmr_beep');
+                        const beep=document.getElementById('tmr_beep');
       let target=20*60*1000; // default 20m
       let remain=target;
       let running=false, last=0, rafId=0, turns=0;
@@ -433,13 +452,13 @@
       function start(){ if(running) return; running=true; last=performance.now(); rafId=requestAnimationFrame(tick); }
       function pause(){ running=false; if(rafId) cancelAnimationFrame(rafId); }
       function reset(){ pause(); remain=target; draw(); }
-      function addLog(s){ const li=document.createElement('li'); li.textContent=s; log.appendChild(li); li.scrollIntoView({block:'end'}); }
+      function addLog(s){}
 
       btnStart&& (btnStart.onclick=()=>{ start(); addLog('▶ 開始'); });
       btnPause&& (btnPause.onclick=()=>{ pause(); addLog('⏸ 一時停止'); });
       btnReset&& (btnReset.onclick=()=>{ reset(); addLog('⟲ リセット'); });
-      btnTurn&& (btnTurn.onclick=()=>{ turns++; document.getElementById('tmr_turn_out').textContent=`Turn: ${turns}`; addLog(`Turn ${turns} 終了 (${fmt(target-remain)} 経過)`); });
-      btnLap&&  (btnLap.onclick =()=>{ addLog(`Lap: ${fmt(target-remain)} / 残り ${fmt(remain)}`); });
+      
+      
 
       const setBtn=document.getElementById('tmr_set');
       const inMin=document.getElementById('tmr_min');

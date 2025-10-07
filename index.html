@@ -22,12 +22,9 @@
       <button class="timer-btn" data-preset="900">15m</button>
       <button class="timer-btn" data-preset="1200">20m</button>
     </div>
-    <button class="timer-btn" id="tmr_turn">ターン＋</button>
-    <span class="pill" id="tmr_turn_out">Turn: 0</span>
-    <button class="timer-btn" id="tmr_lap">ラップ</button>
   </div>
 </div>
-<div id="tmr_log_panel" class="panel"><h4>ログ</h4><ul id="tmr_log" class="small"></ul><audio id="tmr_beep"></audio></div>
+<audio id="tmr_beep"></audio>
 
   <div class="tabs">
     <div class="tab" data-tab="build" aria-selected="true">構築記事</div>
@@ -101,6 +98,15 @@
         <div class="row"><label>名前</label><input type="text" id="sc_a_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_a_types"></div></div>
         <div class="row"><label>性格</label><select id="sc_a_nature"><option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option></select></div>
         <div class="row"><span class="pill">EV</span><input type="number" id="sc_a_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_a_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_a_ev_def" placeholder="B" value="0"/><input type="number" id="sc_a_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_a_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_a_ev_spe" placeholder="S" value="0"/></div>
+        <div class="ev-presets" id="sc_a_ev_presets">
+          <button class="btn" data-evp="HA252">HA252</button>
+          <button class="btn" data-evp="AS252">AS252</button>
+          <button class="btn" data-evp="HB252">HB252</button>
+          <button class="btn" data-evp="HD252">HD252</button>
+          <button class="btn" data-evp="CS252">CS252</button>
+          <button class="btn" data-evp="BD252">BD252</button>
+          <button class="btn" data-evp="HC252">HC252</button>
+        </div>
         <div class="row"><label>技</label><input type="text" id="sc_move" placeholder="技名" list="dl_moves"/><select id="sc_move_t"><option value="">タイプ</option></select><select id="sc_move_c"><option value="">分類</option><option>物理</option><option>特殊</option><option>変化</option></select><input type="number" id="sc_move_p" placeholder="威力"/></div>
         <div class="row"><label>テラ</label><select id="sc_a_tera"><option value="">なし</option></select><label>持ち物</label><select id="sc_a_item"><option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option></select><label>特性</label><select id="sc_a_ability"><option value="">なし</option><option>てきおうりょく</option><option>もらいび</option></select></div>
       </div>
@@ -109,6 +115,15 @@
         <div class="row"><label>名前</label><input type="text" id="sc_b_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_b_types"></div></div>
         <div class="row"><label>性格</label><select id="sc_b_nature"><option>てれや</option><option>ずぶとい</option><option>おだやか</option><option>ひかえめ</option><option>おくびょう</option></select></div>
         <div class="row"><span class="pill">EV</span><input type="number" id="sc_b_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_b_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_b_ev_def" placeholder="B" value="0"/><input type="number" id="sc_b_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_b_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_b_ev_spe" placeholder="S" value="0"/></div>
+        <div class="ev-presets" id="sc_b_ev_presets">
+          <button class="btn" data-evp="HA252">HA252</button>
+          <button class="btn" data-evp="AS252">AS252</button>
+          <button class="btn" data-evp="HB252">HB252</button>
+          <button class="btn" data-evp="HD252">HD252</button>
+          <button class="btn" data-evp="CS252">CS252</button>
+          <button class="btn" data-evp="BD252">BD252</button>
+          <button class="btn" data-evp="HC252">HC252</button>
+        </div>
         <div class="row"><label>壁</label><input type="checkbox" id="sc_b_screen"/><label>天候</label><select id="sc_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select></div>
       </div>
     </div>

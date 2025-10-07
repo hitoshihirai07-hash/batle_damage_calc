@@ -62,3 +62,7 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 .timer-input input{width:70px}
 #tmr_log_panel{display:none;margin-top:6px}
 @media(max-width:640px){.timer-input input{width:58px} .timer-minor{display:none}}
+
+/* v20: EV preset buttons for single calc */
+.ev-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.ev-presets .btn{padding:6px 8px}
