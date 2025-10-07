@@ -31,3 +31,34 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 .mtx-chip{background:rgba(148,163,184,.10);color:#cbd5e1}
 .matrix td .mtx-pct{font-weight:600}
 .matrix td .mtx-mv{font-size:11px;opacity:.85;margin-top:2px}
+
+/* === Timer styles === */
+.timer-wrap{display:flex;flex-direction:column;gap:12px}
+.timer-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.timer-face{font-size:40px;font-weight:800;letter-spacing:1px;padding:8px 12px;border:1px solid var(--br);border-radius:12px;background:#0f172a}
+.timer-btn{padding:8px 12px;border-radius:10px;border:1px solid #3b82f6;background:#1f2937;color:#dbeafe;cursor:pointer}
+.timer-preset .timer-btn{border-color:#475569}
+.timer-face.warn{animation:blink 0.9s steps(2,end) infinite;border-color:#ef4444;color:#fecaca}
+@keyframes blink{50%{opacity:.35}}
+
+/* === Single calc === */
+.single-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.single-grid{grid-template-columns:1fr 1fr}}
+.single-card{border:1px solid var(--br);border-radius:12px;background:#0f172a;padding:10px}
+.single-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.result-box{border:1px solid var(--br);border-radius:12px;padding:10px;background:#0b1325}
+.result-box h4{margin:0 0 6px 0}
+.result-pct{font-size:22px;font-weight:800}
+.result-detail{font-size:12px;color:#9ca3af;line-height:1.5}
+
+/* === Timer Dock (always visible) === */
+.timer-dock{position:sticky;top:6px;z-index:50;display:flex;gap:10px;align-items:center;justify-content:space-between;
+  background:#0b1220;border:1px solid var(--br);border-radius:12px;padding:8px 10px;margin:6px 0}
+.timer-dock .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.timer-dock .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.timer-mini{font-size:28px;font-weight:800;letter-spacing:1px;padding:4px 8px;border:1px solid var(--br);border-radius:10px;background:#0f172a}
+.timer-mini.warn{animation:blink .9s steps(2,end) infinite;border-color:#ef4444;color:#fecaca}
+.timer-input{display:flex;gap:6px;align-items:center}
+.timer-input input{width:70px}
+#tmr_log_panel{display:none;margin-top:6px}
+@media(max-width:640px){.timer-input input{width:58px} .timer-minor{display:none}}

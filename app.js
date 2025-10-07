@@ -190,6 +190,7 @@
   }
 
   function TYPES_HTML(){return TYPES.map(t=>`<option>${t}</option>`).join("")}
+  function fillTypeSelect(sel){ sel.innerHTML='<option value="">タイプ</option>'+TYPES_HTML(); }
   function moveRowHTML(i){return `<div class="row"><label>技${i}</label><input type="text" data-move-input placeholder="技名" list="dl_moves"/><select data-move-type><option value="">タイプ</option>${TYPES_HTML()}</select><select data-move-cat><option value="">分類</option><option>物理</option><option>特殊</option><option>変化</option></select><input type="number" data-move-pow placeholder="威力"/></div>`}
   function cardTemplate(side,idx){
     return `<div class="card panel" style="display:block" data-side="${side}" data-slot="${idx}">
@@ -343,9 +344,118 @@
       const party = collectParty(document.getElementById('party'));
       applyPartyToSelf(party);
     });
-  }
 
-  function collectParty(root){
+    // === Single calc wiring ===
+    (function(){
+      const msel = document.getElementById('sc_move');
+      const mtyp = document.getElementById('sc_move_t');
+      const mcat = document.getElementById('sc_move_c');
+      const mpow = document.getElementById('sc_move_p');
+      const aName = document.getElementById('sc_a_name');
+      const bName = document.getElementById('sc_b_name');
+      const aTypes = document.getElementById('sc_a_types');
+      const bTypes = document.getElementById('sc_b_types');
+      const teraSel = document.getElementById('sc_a_tera');
+      if(msel && mtyp && teraSel){ fillTypeSelect(mtyp); fillTypeSelect(teraSel); }
+
+      if(msel){
+        msel.addEventListener('change', ()=>{
+          const mv = moveByName(msel.value);
+          if(mv){ if(!mtyp.value) mtyp.value=canonType(mv.t)||''; if(!mcat.value) mcat.value=mv.c||''; if(!mpow.value||mpow.value==='0') mpow.value=mv.p||0; }
+        });
+      }
+      if(aName){
+        aName.addEventListener('change', ()=>{ const info=pokeInfo(aName.value||''); aTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; aTypes.appendChild(s); }); });
+      }
+      if(bName){
+        bName.addEventListener('change', ()=>{ const info=pokeInfo(bName.value||''); bTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; bTypes.appendChild(s); }); });
+      }
+
+      function readEV(prefix){
+        const get=(id)=> Number(document.getElementById(prefix+id).value||0);
+        return {hp:get('_ev_hp'), atk:get('_ev_atk'), def:get('_ev_def'), spa:get('_ev_spa'), spd:get('_ev_spd'), spe:get('_ev_spe')};
+      }
+      function readNature(prefix){ const el=document.getElementById(prefix+'_nature'); return el? el.value : 'てれや'; }
+
+      const btn=document.getElementById('sc_calc');
+      if(btn){
+        btn.addEventListener('click', ()=>{
+          const aN=(aName&&aName.value||'').trim(), bN=(bName&&bName.value||'').trim();
+          const mv= msel? moveByName(msel.value) : null;
+          const mtype = canonType((mtyp&&mtyp.value) || (mv&&mv.t) || '');
+          const mcatv = (mcat&&mcat.value) || (mv&&mv.c) || '変化';
+          const mp = Number((mpow&&mpow.value) || (mv&&mv.p) || 0);
+
+          const A = statBlock(aN, readEV('sc_a'), readNature('sc_a'), 50, 31);
+          const B = statBlock(bN, readEV('sc_b'), readNature('sc_b'), 50, 31);
+
+          const ctx = {level:50, atk:A.atk, spa:A.spa, def:B.def, spd:B.spd, power:mp, category:mcatv, moveType:mtype, attackerTypes:A.types, defenderTypes:B.types,
+            teraType:(document.getElementById('sc_a_tera')||{}).value||null, weather:(document.getElementById('sc_weather')||{}).value||null,
+            critical:false, burn:false, item:(document.getElementById('sc_a_item')||{}).value||null, ability:(document.getElementById('sc_a_ability')||{}).value||null, screen:(document.getElementById('sc_b_screen')||{}).checked };
+
+          const dmg = calcDamage(ctx);
+          const hp = B.hp||1;
+          let pctMin = Math.max(0, Math.round(100*dmg[0]/Math.max(1,hp)));
+          let pctMax = Math.max(0, Math.round(100*dmg[1]/Math.max(1,hp)));
+          if(dmg[2]===0){ pctMin=0; pctMax=0; }
+          const out = document.getElementById('sc_result'); if(out) out.style.display='block';
+          const pctEl=document.getElementById('sc_pct'); if(pctEl) pctEl.textContent = `${pctMin}-${pctMax}% (${dmg[0]}-${dmg[1]})`;
+          const detEl=document.getElementById('sc_detail'); if(detEl) detEl.textContent = `技:${(msel&&msel.value)||''} / タイプ:${mtype||'-'} / 相性:${dmg[2]} / 攻:${(A.types||[]).join('/')} / 防:${(B.types||[]).join('/')}`;
+        });
+      }
+    })();
+
+    // === Timer wiring ===
+    ;(function(){
+      const face=document.getElementById('tmr_face');
+      if(!face) return;
+      const btnStart=document.getElementById('tmr_start');
+      const btnPause=document.getElementById('tmr_pause');
+      const btnReset=document.getElementById('tmr_reset');
+      const btnTurn=document.getElementById('tmr_turn');
+      const btnLap=document.getElementById('tmr_lap');
+      const log=document.getElementById('tmr_log');
+      const beep=document.getElementById('tmr_beep');
+      let target=20*60*1000; // default 20m
+      let remain=target;
+      let running=false, last=0, rafId=0, turns=0;
+
+      function fmt(ms){
+        const s=Math.max(0,Math.floor(ms/1000)), m=Math.floor(s/60), ss=s%60, ds=Math.floor((ms%1000)/100);
+        return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${ds}`;
+      }
+      function draw(){ face.textContent=fmt(remain); face.classList.toggle('warn', remain<=10000); }
+      function tick(t){
+        if(!running){ return; }
+        const dt = t - last; last = t; remain -= dt; if(remain<=0){ remain=0; running=false; try{beep.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAABAA=='; beep.play().catch(()=>{});}catch(e){} }
+        draw(); if(running) { rafId=requestAnimationFrame(tick); }
+      }
+      function start(){ if(running) return; running=true; last=performance.now(); rafId=requestAnimationFrame(tick); }
+      function pause(){ running=false; if(rafId) cancelAnimationFrame(rafId); }
+      function reset(){ pause(); remain=target; draw(); }
+      function addLog(s){ const li=document.createElement('li'); li.textContent=s; log.appendChild(li); li.scrollIntoView({block:'end'}); }
+
+      btnStart&& (btnStart.onclick=()=>{ start(); addLog('▶ 開始'); });
+      btnPause&& (btnPause.onclick=()=>{ pause(); addLog('⏸ 一時停止'); });
+      btnReset&& (btnReset.onclick=()=>{ reset(); addLog('⟲ リセット'); });
+      btnTurn&& (btnTurn.onclick=()=>{ turns++; document.getElementById('tmr_turn_out').textContent=`Turn: ${turns}`; addLog(`Turn ${turns} 終了 (${fmt(target-remain)} 経過)`); });
+      btnLap&&  (btnLap.onclick =()=>{ addLog(`Lap: ${fmt(target-remain)} / 残り ${fmt(remain)}`); });
+
+      const setBtn=document.getElementById('tmr_set');
+      const inMin=document.getElementById('tmr_min');
+      const inSec=document.getElementById('tmr_sec');
+      if(setBtn){ setBtn.onclick=()=>{ const m=Math.max(0,Number(inMin?.value||0)); const s=Math.max(0,Math.min(59,Number(inSec?.value||0))); target=(m*60+s)*1000; remain=target; draw(); addLog(`Manual: ${m}m${s}s に設定`); }; }
+
+      document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
+        const sec = Number(b.dataset.preset||0); target = sec*1000; remain=target; draw(); addLog(`Preset: ${sec}s に設定`);
+      }));
+
+      draw();
+    })();
+
+}
+
+function collectParty(root){
     const cards=Array.from(root.querySelectorAll('.card')); const members=[];
     cards.slice(0,6).forEach(c=>{
       const name=c.querySelector('[data-poke-input]')?.value?.trim()||"";

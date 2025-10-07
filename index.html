@@ -2,6 +2,33 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Battle Damage Calc (BDC)</title><link rel="icon" href="./favicon.ico"><link rel="stylesheet" href="./styles.css"/></head>
 <body><div class="wrap">
   <div class="header"><div class="brand">Battle Damage Calc <span class="badge">BDC</span></div><div id="data_counts" class="counter">データ: 読み込み中…</div></div>
+<div class="timer-dock">
+  <div class="left">
+    <div class="timer-mini" id="tmr_face">20:00.0</div>
+    <button class="timer-btn" id="tmr_start">開始</button>
+    <button class="timer-btn" id="tmr_pause">一時停止</button>
+    <button class="timer-btn" id="tmr_reset">リセット</button>
+    <div class="timer-input">
+      <label class="timer-minor">分</label><input type="number" id="tmr_min" min="0" value="20"/>
+      <label class="timer-minor">秒</label><input type="number" id="tmr_sec" min="0" max="59" value="0"/>
+      <button class="timer-btn" id="tmr_set">設定</button>
+    </div>
+  </div>
+  <div class="right">
+    <div class="timer-preset">
+      <button class="timer-btn" data-preset="60">60s</button>
+      <button class="timer-btn" data-preset="90">90s</button>
+      <button class="timer-btn" data-preset="300">5m</button>
+      <button class="timer-btn" data-preset="900">15m</button>
+      <button class="timer-btn" data-preset="1200">20m</button>
+    </div>
+    <button class="timer-btn" id="tmr_turn">ターン＋</button>
+    <span class="pill" id="tmr_turn_out">Turn: 0</span>
+    <button class="timer-btn" id="tmr_lap">ラップ</button>
+  </div>
+</div>
+<div id="tmr_log_panel" class="panel"><h4>ログ</h4><ul id="tmr_log" class="small"></ul><audio id="tmr_beep"></audio></div>
+
   <div class="tabs">
     <div class="tab" data-tab="build" aria-selected="true">構築記事</div>
     <div class="tab" data-tab="six" aria-selected="false">6×6 プランナー</div>
@@ -66,7 +93,58 @@
     <div class="cards"></div>
   </div>
 
-  <div class="panel" id="calc" aria-hidden="true"><div class="small">まずは 6×6 をご利用ください。</div></div>
+  
+  <div class="panel" id="calc" aria-hidden="true">
+    <div class="single-grid">
+      <div class="single-card" id="sc_att">
+        <h3>攻撃側</h3>
+        <div class="row"><label>名前</label><input type="text" id="sc_a_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_a_types"></div></div>
+        <div class="row"><label>性格</label><select id="sc_a_nature"><option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option></select></div>
+        <div class="row"><span class="pill">EV</span><input type="number" id="sc_a_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_a_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_a_ev_def" placeholder="B" value="0"/><input type="number" id="sc_a_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_a_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_a_ev_spe" placeholder="S" value="0"/></div>
+        <div class="row"><label>技</label><input type="text" id="sc_move" placeholder="技名" list="dl_moves"/><select id="sc_move_t"><option value="">タイプ</option></select><select id="sc_move_c"><option value="">分類</option><option>物理</option><option>特殊</option><option>変化</option></select><input type="number" id="sc_move_p" placeholder="威力"/></div>
+        <div class="row"><label>テラ</label><select id="sc_a_tera"><option value="">なし</option></select><label>持ち物</label><select id="sc_a_item"><option value="">なし</option><option>いのちのたま</option><option>こだわりハチマキ</option><option>こだわりメガネ</option></select><label>特性</label><select id="sc_a_ability"><option value="">なし</option><option>てきおうりょく</option><option>もらいび</option></select></div>
+      </div>
+      <div class="single-card" id="sc_def">
+        <h3>防御側</h3>
+        <div class="row"><label>名前</label><input type="text" id="sc_b_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_b_types"></div></div>
+        <div class="row"><label>性格</label><select id="sc_b_nature"><option>てれや</option><option>ずぶとい</option><option>おだやか</option><option>ひかえめ</option><option>おくびょう</option></select></div>
+        <div class="row"><span class="pill">EV</span><input type="number" id="sc_b_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_b_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_b_ev_def" placeholder="B" value="0"/><input type="number" id="sc_b_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_b_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_b_ev_spe" placeholder="S" value="0"/></div>
+        <div class="row"><label>壁</label><input type="checkbox" id="sc_b_screen"/><label>天候</label><select id="sc_weather"><option value="">なし</option><option>雨</option><option>晴れ</option></select></div>
+      </div>
+    </div>
+    <div class="single-footer">
+      <button class="btn" id="sc_calc">単体計算</button>
+      <span id="sc_out_dbg" class="small"></span>
+    </div>
+    <div class="result-box" id="sc_result" style="display:none">
+      <h4>結果</h4>
+      <div class="result-pct" id="sc_pct"></div>
+      <div class="result-detail" id="sc_detail"></div>
+    </div>
+  </div>
+<button class="timer-btn" id="tmr_start">開始</button>
+        <button class="timer-btn" id="tmr_pause">一時停止</button>
+        <button class="timer-btn" id="tmr_reset">リセット</button>
+        <div class="timer-preset">
+          <button class="timer-btn" data-preset="60">60s</button>
+          <button class="timer-btn" data-preset="90">90s</button>
+          <button class="timer-btn" data-preset="300">5m</button>
+          <button class="timer-btn" data-preset="900">15m</button>
+        </div>
+      </div>
+      <div class="timer-row">
+        <button class="timer-btn" id="tmr_turn">ターン＋</button>
+        <span class="pill" id="tmr_turn_out">Turn: 0</span>
+        <button class="timer-btn" id="tmr_lap">ラップ</button>
+        <span class="small">（ラップはログに追記）</span>
+      </div>
+      <div class="panel" style="display:block">
+        <h4>ログ</h4>
+        <ul id="tmr_log" class="small"></ul>
+      </div>
+      <audio id="tmr_beep"></audio>
+    </div>
+  </div>
 </div>
 <script src="./app.js"></script>
 <datalist id="dl_moves"></datalist>
