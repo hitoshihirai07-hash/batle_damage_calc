@@ -370,23 +370,19 @@
       const teraSel = document.getElementById('sc_a_tera');
       if(msel && mtyp && teraSel){ fillTypeSelect(mtyp); fillTypeSelect(teraSel); }
 
-      
-if(msel){
-  msel.addEventListener('change', ()=>{
-    try{
-      const mv = (typeof moveByName==='function') ? moveByName(msel.value) : null;
-      if(mv){
-        if(mtyp){ mtyp.value = (mv.type || mv.t || '').toString(); }
-        if(mcat){ mcat.value = (mv.category || mv.c || '').toString(); }
-        if(mpow){ mpow.value = Number(mv.power ?? mv.p ?? 0); }
+      if(msel){
+        msel.addEventListener('change', ()=>{
+          const mv = moveByName(msel.value);
+          if(mv){ if(!mtyp.value) mtyp.value=canonType(mv.t)||''; if(!mcat.value) mcat.value=mv.c||''; if(!mpow.value||mpow.value==='0') mpow.value=mv.p||0; }
+        });
       }
-    }catch(e){ console.warn('msel change handler failed', e); }
-  });
-}
+      if(aName){
+        aName.addEventListener('change', ()=>{ const info=pokeInfo(aName.value||''); aTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; aTypes.appendChild(s); }); });
+      }
+      if(bName){
+        bName.addEventListener('change', ()=>{ const info=pokeInfo(bName.value||''); bTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; bTypes.appendChild(s); }); });
+      }
 
-      if(aName){ aName.addEventListener('change', ()=>{}); }
-      if(bName){ bName.addEventListener('change', ()=>{}); }
-      }
       function readEV(prefix){
         const get=(id)=> Number(document.getElementById(prefix+id).value||0);
         return {hp:get('_ev_hp'), atk:get('_ev_atk'), def:get('_ev_def'), spa:get('_ev_spa'), spd:get('_ev_spd'), spe:get('_ev_spe')};
@@ -407,117 +403,303 @@ if(msel){
         // apply
         for(const k in evs){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=evs[k]; }
         // assign 4 to HP if total<508
-        /* removed auto HP rule */
-  }
-})();
+        let total=0; for(const k in ids){ const el=document.getElementById(prefix+ids[k]); total+= Number(el&&el.value||0); }
+        if(total<=504){ const hpEl=document.getElementById(prefix+ids['hp']); if(hpEl) hpEl.value = Number(hpEl.value||0)+4; }
+      
+      }
 
+      const btn=document.getElementById('sc_calc');
+      const ap=document.getElementById('sc_a_ev_presets'); const bp=document.getElementById('sc_b_ev_presets');
+      function bindPresetBar(bar,prefix){ if(!bar) return; bar.querySelectorAll('[data-evp]').forEach(b=> b.addEventListener('click', ()=> applyEVPreset(prefix,b.dataset.evp))); }
+      bindPresetBar(ap,'sc_a'); bindPresetBar(bp,'sc_b');
+      if(btn){
+        btn.addEventListener('click', ()=>{
+          const aN=(aName&&aName.value||'').trim(), bN=(bName&&bName.value||'').trim();
+          const mv= msel? moveByName(msel.value) : null;
+          mtype = canonType((mtyp&&mtyp.value) || (mv&&mv.t) || '');
+          const mcatv = (mcat&&mcat.value) || (mv&&mv.c) || '変化';
+          const mp = Number((mpow&&mpow.value) || (mv&&mv.p) || 0);
 
+          const A = statBlock(aN, readEV('sc_a'), readNature('sc_a'), 50, 31);
+          const B = statBlock(bN, readEV('sc_b'), readNature('sc_b'), 50, 31);
 
+          const ctx = {level:50, atk:A.atk, spa:A.spa, def:B.def, spd:B.spd, power:mp, category:mcatv, moveType:mtype, attackerTypes:A.types, defenderTypes:B.types,
+            teraType:(document.getElementById('sc_a_tera')||{}).value||null, weather:(document.getElementById('sc_weather')||{}).value||null,
+            critical: !!(document.getElementById('sc_a_crit')||{}).checked, burn: !!(document.getElementById('sc_a_burn')||{}).checked,
+            item:(document.getElementById('sc_a_item')||{}).value||null, ability:(document.getElementById('sc_a_ability')||{}).value||null,
+            screenPhys: !!(document.getElementById('sc_b_reflect')||{}).checked, screenSpec: !!(document.getElementById('sc_b_lightscreen')||{}).checked,
+            atkRank: (document.getElementById('sc_a_rank_atk')||{}).value, defRank: (document.getElementById('sc_b_rank_def')||{}).value
+          };
 
-/* removed broken injected block */
-return bar;
-  }
-
-  function findCards(root){
-    // try known card wrappers; otherwise any block with >=6 number inputs
-    let cards=Array.from(root.querySelectorAll('.card, fieldset, .panel, .box'));
-    if(cards.length===0){
-      const blocks=[root.querySelectorAll('section, div')];
-      cards = blocks.filter(bl=> bl.querySelectorAll('input[type="number"]').length>=6);
-    }
-    return cards;
-  }
-
-  function ensureBars(root){
-    findCards(root).forEach(card=>{
-      // rename legacy labels if存在
-      card.querySelectorAll('button').forEach(b=>{
-        const t=(b.textContent||'').replace(/\s+/g,'');
-        if(OLD2NEW[t]) b.textContent=OLD2NEW[t];
-      });
-      if(!card.querySelector('.evbar7')){
-        const bar=makeBar();
-        const header=card.querySelector('h3,h4,.header,.title');
-        if(header && header.parentNode===card) header.insertAdjacentElement('afterend',bar);
-        else card.prepend(bar);
-      }else{
-        // fill不足
-        const seen=new Set([card.querySelectorAll('.evbar7 [data-evp]')].map(x=>x.dataset.evp));
-        const bar=card.querySelector('.evbar7');
-        WANT.forEach(code=>{
-          if(!seen.has(code)){ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); }
+          const dmg = calcDamage(ctx);
+          const hp = B.hp||1;
+          let pctMin = Math.max(0, Math.round(100*dmg[0]/Math.max(1,hp)));
+          let pctMax = Math.max(0, Math.round(100*dmg[1]/Math.max(1,hp)));
+          if(dmg[2]===0){ pctMin=0; pctMax=0; }
+          const out = document.getElementById('sc_result'); if(out) out.style.display='block';
+          const pctEl=document.getElementById('sc_pct'); if(pctEl) pctEl.textContent = `${pctMin}-${pctMax}% (${dmg[0]}-${dmg[1]})`;
+          const detEl=document.getElementById('sc_detail'); if(detEl) detEl.textContent = `技:${(msel&&msel.value)||''} / タイプ:${mtype||'-'} / 相性:${dmg[2]} / 攻:${(A.types||[]).join('/')} / 防:${(B.types||[]).join('/')}`;
         });
       }
-    });
-  }
+    })();
 
-  function findEVInputs(scope){
-    const res={};
-    const mapPH={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
-    for(const k in mapPH){
-      const el=scope.querySelector(`input[placeholder="${mapPH[k]}"]`);
-      if(el) res[k]=el;
-    }
-    const scan=scope.querySelectorAll('input[type="number"],input[type="text"]');
-    scan.forEach(el=>{
-      const key=((el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'')).toLowerCase();
-      if(!res.hp  && (key.includes('ev_h')||key.includes('hp')||/\\bh\\b/.test(key))) res.hp=el;
-      if(!res.atk && (key.includes('ev_a')||key.includes('atk')||key.includes('こうげき'))) res.atk=el;
-      if(!res.def && (key.includes('ev_b')||key.includes('def')||key.includes('ぼうぎょ'))) res.def=el;
-      if(!res.spa && (key.includes('ev_c')||key.includes('spa')||key.includes('とくこう')||/\\bc\\b/.test(key))) res.spa=el;
-      if(!res.spd && (key.includes('ev_d')||key.includes('spd')||key.includes('とくぼう')||/\\bd\\b/.test(key))) res.spd=el;
-      if(!res.spe && (key.includes('ev_s')||key.includes('spe')||key.includes('すばやさ')||key.includes('素早'))) res.spe=el;
-    });
-    // fallback: first row with >=6 numeric inputs
-    if(Object.values(res).filter(Boolean).length<6){
-      const rows=[scope.querySelectorAll('.row,.ev-row,fieldset,.grid')];
-      for(const row of rows){
-        const nums=row.querySelectorAll('input[type="number"]');
-        if(nums.length>=6){
-          const order=['hp','atk','def','spa','spd','spe'];
-          order.forEach((k,i)=>{ if(!res[k] && nums[i]) res[k]=nums[i]; });
-          break;
-        }
+    // === Timer wiring ===
+    ;(function(){
+      const face=document.getElementById('tmr_face');
+      if(!face) return;
+      const btnStart=document.getElementById('tmr_start');
+      const btnPause=document.getElementById('tmr_pause');
+      const btnReset=document.getElementById('tmr_reset');
+                        const beep=document.getElementById('tmr_beep');
+      let target=20*60*1000; // default 20m
+      let remain=target;
+      let running=false, last=0, rafId=0;
+
+      function fmt(ms){
+        const s=Math.max(0,Math.floor(ms/1000)), m=Math.floor(s/60), ss=s%60, ds=Math.floor((ms%1000)/100);
+        return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${ds}`;
       }
-    }
-    return res;
+      function draw(){ face.textContent=fmt(remain); face.classList.toggle('warn', remain<=10000); }
+      function tick(t){
+        if(!running){ return; }
+        const dt = t - last; last = t; remain -= dt; if(remain<=0){ remain=0; running=false; try{beep.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAABAA=='; beep.play().catch(()=>{});}catch(e){} }
+        draw(); if(running) { rafId=requestAnimationFrame(tick); }
+      }
+      function start(){ if(running) return; running=true; last=performance.now(); rafId=requestAnimationFrame(tick); }
+      function pause(){ running=false; if(rafId) cancelAnimationFrame(rafId); }
+      function reset(){ pause(); remain=target; draw(); }
+      function addLog(s){}
+
+      btnStart&& (btnStart.onclick=()=>{ start(); addLog('▶ 開始'); });
+      btnPause&& (btnPause.onclick=()=>{ pause(); addLog('⏸ 一時停止'); });
+      btnReset&& (btnReset.onclick=()=>{ reset(); addLog('⟲ リセット'); });
+      
+      
+
+      const quick20=document.getElementById('tmr_quick20'); const setBtn=document.getElementById('tmr_set');
+      const inMin=document.getElementById('tmr_min');
+      const inSec=document.getElementById('tmr_sec');
+      if(quick20){ quick20.onclick=()=>{ target=20*60*1000; remain=target; if(inMin) inMin.value=20; if(inSec) inSec.value=0; draw(); }; }
+      if(setBtn){ setBtn.onclick=()=>{ const m=Math.max(0,Number(inMin?.value||0)); const s=Math.max(0,Math.min(59,Number(inSec?.value||0))); target=(m*60+s)*1000; remain=target; draw(); }; }
+
+      draw();
+    })();
+
+}
+
+function collectParty(root){
+    const cards=Array.from(root.querySelectorAll('.card')); const members=[];
+    cards.slice(0,6).forEach(c=>{
+      const name=c.querySelector('[data-poke-input]')?.value?.trim()||"";
+      const nature=c.querySelector('[data-nature]')?.value||"てれや";
+      const evs={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> evs[k]=Number(c.querySelector('[data-ev-'+k+']')?.value||0));
+      const moves=Array.from(c.querySelectorAll('[data-move-input]')).map(i=>i.value.trim()).filter(Boolean);
+      members.push({name,nature,evs,moves});
+    });
+    return {name:document.getElementById('party_name').value||"", members};
+  }
+  function applyPartyToSelf(party){
+    const cards=Array.from(document.querySelectorAll('#self .card'));
+    (party.members||[]).slice(0,6).forEach((m,i)=>{
+      const c=cards[i]; if(!c) return;
+      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||""; name.dispatchEvent(new Event('change',{bubbles:true})); }
+      ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
+      const mvInputs=Array.from(c.querySelectorAll('[data-move-input]'));
+      mvInputs.forEach((inp,idx)=>{
+        const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
+        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=canonType(mvObj.t)||""; if(cat) cat.value=mvObj.c||""; if(p) p.value=mvObj.p||0; } } }
+        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
+      });
+    });
+    document.querySelector('.tab[data-tab="six"]').click();
   }
 
-  function evMap(code){
-    return {
-      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252}, 'HB252':{hp:252,def:252},
-      'HD252':{hp:252,spd:252}, 'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
-      'HC252':{hp:252,spa:252}
-    }[code]||{};
+  function readMonFromPanel(panel){
+    const nm=(panel.querySelector('[data-poke-input]')?.value||"").trim();
+    const nat=panel.querySelector('[data-nature]')?.value||'てれや';
+    const ev={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> ev[k]=Number(panel.querySelector('[data-ev-'+k+']')?.value||0));
+    const stat=statBlock(nm,ev,nat,50,31);
+    const moves=Array.from(panel.querySelectorAll('[data-move-input]')).map(x=>x.value.trim()).filter(Boolean);
+    return {name:nm, stat, moves};
   }
 
-  function apply(code, scope){
-    const inputs=findEVInputs(scope);
-    const evs=evMap(code);
-    const els=Object.values(inputs).filter(Boolean);
-    if(els.length<2) return;
-    // reset all to 0
-    els.forEach(el=>{ if('value' in el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-    // set two stats 252; others remain 0
-    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+  function pct(min,max,hp){ const a=Math.max(0,Math.min(100,Math.round(100*min/Math.max(1,hp)))); const b=Math.max(0,Math.min(100,Math.round(100*max/Math.max(1,hp)))); return [a,b]; }
+  function koLabel(min,max,hp){
+    if(hp<=0) return {label:'',cls:''};
+    if(min>=hp) return {label:'確1',cls:'mtx-ohko'};
+    if(max>=hp) return {label:'乱1',cls:'mtx-ohko'};
+    if(min*2>=hp) return {label:'確2',cls:'mtx-thko2'};
+    if(max*2>=hp) return {label:'乱2',cls:'mtx-thko2'};
+    if(min*3>=hp) return {label:'確3',cls:'mtx-thko3'};
+    if(max*3>=hp) return {label:'乱3',cls:'mtx-thko3'};
+    return {label:'耐',cls:'mtx-chip'};
   }
 
-  function boot(){
-    ROOTS.forEach(id=>{ const r=document.getElementById(id); if(r) ensureBars(r); });
-  }
-  // initial & late
-  document.addEventListener('DOMContentLoaded', boot);
-  setTimeout(boot, 500);
-  const iv=setInterval(()=>{ let ok=false; ROOTS.forEach(id=>{ if(document.getElementById(id)) ok=true; }); if(ok){ boot(); clearInterval(iv);} }, 250);
 
-  // global delegation for [data-evp] buttons in any root
-  document.addEventListener('click', (e)=>{
-    const btn=e.target.closest('[data-evp]'); if(!btn) return;
-    const scope=btn.closest('.card, fieldset, .panel, .box') || document.getElementById('six') || document;
-    apply(btn.dataset.evp, scope);
+  function calcSixMatrix(){
+    const selfCards=Array.from(document.querySelectorAll('#self .card')), oppCards=Array.from(document.querySelectorAll('#opp .card'));
+    const selfMons=selfCards.map(readMonFromPanel), oppMons=oppCards.map(readMonFromPanel);
+    const mat=document.querySelector('#matrix tbody'); mat.innerHTML=''; const thead=document.querySelector('#matrix thead tr'); thead.innerHTML='<th>→</th>'+oppMons.map(m=>`<th>${m.name||'-'}</th>`).join('');
+    selfMons.forEach(A=>{
+      const tr=document.createElement('tr'); tr.appendChild(Object.assign(document.createElement('td'),{textContent:(A.name||'-')}));
+      oppMons.forEach(B=>{
+        const td=document.createElement('td');
+        if(A.name && B.name && A.moves.length && !A.stat._unknown && !B.stat._unknown){
+          const best=bestMoveDamage(A.stat,B.stat,{},A.moves);
+          let [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp);
+          let dmin = best.dmg[0], dmax = best.dmg[1];
+          if(best.mul===0){ mi=0; ma=0; dmin=0; dmax=0; }
+          const ko = koLabel(dmin,dmax,B.stat.hp);
+          td.classList.add(ko.cls||'');
+          td.innerHTML = `<div class="mtx-pct">${mi}-${ma}% (${dmin}-${dmax}) ${ko.label? '· '+ko.label : ''}</div><div class="mtx-mv">${best.name||''}</div>`;
+          const mulText=(best.mul===0?'×0 (無効)': `×${best.mul}`);
+          const atkTypes=(A.stat.types||[]).join('/');
+          const defTypes=(B.stat.types||[]).join('/');
+          td.title = `${best.name||''} / ${mulText} | 攻:${atkTypes} 防:${defTypes}`;
+        }else if(A.name && B.name && (A.stat._unknown || B.stat._unknown)){
+          td.textContent='—//?'; td.title='ポケモンデータ未登録';
+        }else{ td.textContent='—//0'; }
+        tr.appendChild(td);
+      });
+      mat.appendChild(tr);
+    });
+  }
+
+  function renderBuildCards(){
+    const wrap=document.getElementById('build_cards'); wrap.innerHTML="";
+    const limit=Number(document.getElementById('build_rank_max').value||100);
+    const kw = document.getElementById('build_search').value.toString().trim().toLowerCase();
+    const teams = buildDB.teams || [];
+    let shown=0;
+    teams.sort((a,b)=> (a.rank||9999)-(b.rank||9999)).forEach(t=>{
+      if(t.rank && t.rank>limit) return;
+      if(kw && !t.mons.some(m=> (m.name||"").toLowerCase().includes(kw))) return;
+      const card=document.createElement('div'); card.className='team-card';
+      const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||""}</td><td>${m.item||""}</td><td>${m.tera||""}</td></tr>`).join('');
+      card.innerHTML = `<h4>順位: ${t.rank||'-'}</h4>
+        <table class="team-table"><thead><tr><th>#</th><th>ポケモン</th><th>持ち物</th><th>テラス</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" data-apply-party>→ パーティに反映（ポケモンのみ）</button>
+          <button class="btn" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
+        </div>`;
+      card.querySelector('[data-apply-party]').addEventListener('click', ()=>{
+        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
+        const root=document.getElementById('party'); const cards=Array.from(root.querySelectorAll('.card'));
+        for(let i=0;i<6;i++){
+          const c=cards[i]; if(!c) continue;
+          const m=(party.members||[])[i] || {name:""};
+          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
+          ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=0; });
+          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=""; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } });
+        }
+        document.querySelector('.tab[data-tab="party"]').click();
+      });
+      card.querySelector('[data-apply-opp]').addEventListener('click', ()=>{
+        const cards=Array.from(document.querySelectorAll('#opp .card'));
+        (t.mons||[]).slice(0,6).forEach((m,i)=>{
+          const input=cards[i]?.querySelector('[data-poke-input]');
+          if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
+        });
+        document.querySelector('.tab[data-tab="six"]').click();
+      });
+      wrap.appendChild(card); shown++;
+    });
+    document.getElementById('build_count').textContent = `表示 ${shown} 件 / 読込 ${teams.length} 件`;
+  }
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await loadData();
+    buildUI();
   });
 })();
-;
+
+
+// v22: bind six-ev preset bars to inputs within each six card
+(function(){
+  function applyPresetToCard(card, code){
+    const map={
+      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+      'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+      'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+      'HC252':{hp:252,spa:252}
+    };
+    const evs=map[code]||{};
+    const q = (ph)=> card.querySelector(`input[placeholder="${ph}"]`);
+    const inputs={'hp':q('H'),'atk':q('A'),'def':q('B'),'spa':q('C'),'spd':q('D'),'spe':q('S')};
+    // reset to 0
+    Object.values(inputs).forEach(el=>{ if(el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // apply
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // add 4 to HP if <=504
+    let total=0; Object.values(inputs).forEach(el=>{ total += Number(el&&el.value||0); });
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  document.querySelectorAll('.six-ev').forEach(bar=>{
+    const card = bar.closest('.card');
+    bar.querySelectorAll('[data-evp]').forEach(btn=>{
+      btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp));
+    });
+  });
+})();
+
+
+// v23: Runtime injection for 6x6 EV preset bars (defensive, no DOM assumptions)
+(function(){
+  try{
+    const sixRoot = document.getElementById('six');
+    if(!sixRoot) return;
+    // Helper: build bar dom
+    function makeBar(){
+      const labels = ['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+      const bar = document.createElement('div');
+      bar.className = 'ev-presets six-ev';
+      labels.forEach(code=>{
+        const b=document.createElement('button');
+        b.className='btn';
+        b.dataset.evp=code;
+        b.textContent=code;
+        bar.appendChild(b);
+      });
+      return bar;
+    }
+    function applyPresetToCard(card, code){
+      const map={
+        'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+        'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+        'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+        'HC252':{hp:252,spa:252}
+      };
+      const evs=map[code]||{};
+      const q=(ph)=> card.querySelector(`input[placeholder="${ph}"]`);
+      const inputs={'hp':q('H'),'atk':q('A'),'def':q('B'),'spa':q('C'),'spd':q('D'),'spe':q('S')};
+      const els = Object.values(inputs).filter(Boolean);
+      if(els.length===0) return;
+      // reset
+      els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
+      // apply
+      Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+      // +4 to HP if <=504
+      let total=0; els.forEach(el=> total += Number(el.value||0));
+      if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+    }
+    // For every six card with EV inputs, insert a bar at the top (if not already there)
+    const cards = sixRoot.querySelectorAll('.card');
+    cards.forEach(card=>{
+      const hasEV = card.querySelector('input[placeholder="H"],input[placeholder="A"],input[placeholder="B"],input[placeholder="C"],input[placeholder="D"],input[placeholder="S"]');
+      if(!hasEV) return;
+      if(card.querySelector('.ev-presets.six-ev')) return;
+      const bar = makeBar();
+      // insert after the card header if exists, else prepend
+      const header = card.querySelector('h3, h4, .header, .title');
+      if(header && header.parentNode===card){
+        header.insertAdjacentElement('afterend', bar);
+      }else{
+        card.prepend(bar);
+      }
+      bar.querySelectorAll('[data-evp]').forEach(btn=> btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp)));
+    });
+  }catch(e){ console.error('six-ev preset inject failed', e); }
+})();
 
 
 // v25: stronger EV input resolver within a six card
@@ -569,8 +751,8 @@ return bar;
     if(els.length<2) return;
     els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-    /* removed auto HP rule */
-        }
+    let total=0; els.forEach(el=> total += Number(el.value||0));
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
   // Delegate click from #six
   const sixRoot = document.getElementById('six');
@@ -685,7 +867,9 @@ return bar;
     els.forEach(el=>{ if('value' in el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
     // set
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-    /* removed auto +0 HP rule */
+    // +4 HP if room
+    let total=0; els.forEach(el=> total += Number(el.value||0));
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
 
   six.querySelectorAll('.card').forEach(ensureBar);
@@ -734,7 +918,7 @@ return bar;
   function inject6x6(){
     const root=document.getElementById('six'); if(!root) return;
     // find candidate cards: any container with at least 6 numeric inputs -> treat as EV row holder
-    const cards=[root.querySelectorAll('.card, fieldset, .panel, .box')];
+    const cards=[...root.querySelectorAll('.card, fieldset, .panel, .box')];
     cards.forEach(card=>{
       const nums=card.querySelectorAll('input[type="number"]');
       if(nums.length<6) return;
@@ -756,7 +940,9 @@ return bar;
       Object.values(inputs).forEach(el=>{ if(el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
       // apply
       Object.keys(ev).forEach(k=>{ const el=inputs[k]; if(el){ el.value=ev[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-      /* removed auto +0 HP rule */
+      // +4 to HP if room
+      let total=0; Object.values(inputs).forEach(el=> total+=Number(el&&el.value||0));
+      if(total<=504 && inputs.hp){ inputs.hp.value=Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
     }, {once:false});
   }
   function map(code){
@@ -780,7 +966,7 @@ return bar;
       if(!res.spe && (key.includes('ev_s')||key.includes('spe')||key.includes('すばやさ')||key.includes('素早'))) res.spe=el;
     });
     if(Object.values(res).filter(Boolean).length<6){
-      const rows=[card.querySelectorAll('.row, .ev-row, fieldset, .grid')];
+      const rows=[...card.querySelectorAll('.row, .ev-row, fieldset, .grid')];
       for(const row of rows){
         const nums=row.querySelectorAll('input[type="number"]');
         if(nums.length>=6){ const order=['hp','atk','def','spa','spd','spe']; order.forEach((k,i)=>{ if(!res[k]&&nums[i]) res[k]=nums[i]; }); break; }
@@ -851,47 +1037,4 @@ return bar;
     if(document.getElementById('six')){ kick(); clearInterval(iv); }
   }, 250);
   // delegate click remains handled by v29 injector (data-evp)
-})();
-
-// v40: minimal safe EV preset injector (252 fixed; six/party/single)
-(function(){
-  const WANT=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
-  function evMap(c){ return {'HA252':{hp:252,atk:252},'AS252':{atk:252,spe:252},'HB252':{hp:252,def:252},'HD252':{hp:252,spd:252},'CS252':{spa:252,spe:252},'BD252':{def:252,spd:252},'HC252':{hp:252,spa:252}}[c]||{}; }
-  function ensureBar(scope){
-    const cards = Array.from(scope.querySelectorAll('.card, fieldset, .panel, .box')).filter(c=> c.querySelectorAll('input[type="number"]').length>=6);
-    cards.forEach(card=>{
-      if(card.querySelector('.evbar7')) return;
-      const bar=document.createElement('div'); bar.className='evbar7';
-      WANT.forEach(code=>{ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); });
-      card.prepend(bar);
-    });
-  }
-  function findEVInputs(card){
-    const res={}; const sel=(k)=>card.querySelector(k);
-    res.hp = sel('input[name*="_ev_h"], input#*_ev_hp, input[placeholder="H"]') || sel('input[name*="hp"][type="number"]');
-    res.atk= sel('input[name*="_ev_a"], input#*_ev_atk, input[placeholder="A"]') || sel('input[name*="atk"][type="number"]');
-    res.def= sel('input[name*="_ev_b"], input#*_ev_def, input[placeholder="B"]') || sel('input[name*="def"][type="number"]');
-    res.spa= sel('input[name*="_ev_c"], input#*_ev_spa, input[placeholder="C"]') || sel('input[name*="spa"][type="number"]');
-    res.spd= sel('input[name*="_ev_d"], input#*_ev_spd, input[placeholder="D"]') || sel('input[name*="spd"][type="number"]');
-    res.spe= sel('input[name*="_ev_s"], input#*_ev_spe, input[placeholder="S"]') || sel('input[name*="spe"][type="number"]');
-    return res;
-  }
-  function apply(code, card){
-    const inputs=findEVInputs(card);
-    const evs=evMap(code);
-    const els=Object.values(inputs).filter(Boolean);
-    if(els.length<2) return;
-    els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
-    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-  }
-  function boot(){
-    ['six','party','single','solo'].forEach(id=>{ const r=document.getElementById(id); if(r) ensureBar(r); });
-  }
-  document.addEventListener('click', (e)=>{
-    const btn=e.target.closest('[data-evp]'); if(!btn) return;
-    const card=btn.closest('.card, fieldset, .panel, .box')||document;
-    apply(btn.dataset.evp, card);
-  });
-  document.addEventListener('DOMContentLoaded', boot);
-  setTimeout(boot, 400);
 })();
