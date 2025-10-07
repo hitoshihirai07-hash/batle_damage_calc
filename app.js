@@ -118,8 +118,8 @@
 
   function calcDamage(ctx){
     // Early immunity (already present elsewhere)
-    const mtype = canonType(ctx.moveType);
-    const dtypes = normTypeList(ctx.defenderTypes||[]);
+    let mtype = canonType(ctx.moveType);
+    let dtypes = normTypeList(ctx.defenderTypes||[]);
     for(const dt of dtypes){
       if(IMMUNE_PAIRS && IMMUNE_PAIRS.has([mtype, dt].join("@"))) return [0,0,0];
     }
