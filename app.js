@@ -131,7 +131,7 @@
     }
     // Early immunity check (redundant safety)
     mtype = canonType(ctx.moveType);
-    const dtypes = normTypeList(ctx.defenderTypes||[]);
+    dtypes = normTypeList(ctx.defenderTypes||[]);
     for(const dt of dtypes){
       if(IMMUNE_PAIRS.has([mtype, dt].join("@"))) return [0,0,0];
     }
