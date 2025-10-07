@@ -232,7 +232,7 @@
       document.querySelectorAll('.tab').forEach(u=>u.setAttribute('aria-selected', u===t?'true':'false'));
       document.querySelectorAll('.panel').forEach(p=>p.setAttribute('aria-hidden', p.id===t.dataset.tab?'false':'true'));
     }));
-    document.querySelector('.tab[data-tab=\"build\"]').click();
+    document.querySelector('.tab[data-tab="build"]').click();
 
     buildDatalist('dl_moves', (moveDB.list.map(m=>m.n||m.name).filter(Boolean).sort()));
     buildDatalist('dl_pokemon', pokeDB.displayNames);
@@ -250,7 +250,7 @@
           buildDB.teams=parseBuild(json);
           if(!buildDB.teams.length){ alert('構築チームが見つかりませんでした（ファイル形式を確認してください）'); return; }
           renderBuildCards();
-          document.querySelector('.tab[data-tab=\"build\"]').click();
+          document.querySelector('.tab[data-tab="build"]').click();
         }catch(e){ alert('構築記事JSONの読み取りに失敗しました'); console.error(e); }
       }; rd.readAsText(file,'utf-8');
     });
@@ -271,7 +271,7 @@
           if(picker){ picker.remove(); }
           const bar=document.getElementById('matrix_bar');
           const box=document.createElement('div'); box.id='opp_picker'; box.style.display='flex'; box.style.gap='8px'; box.style.alignItems='center';
-          box.innerHTML='<label>相手構築</label><select id=\"opp_picker_select\"></select><button class=\"btn\" id=\"opp_picker_apply\">反映</button>';
+          box.innerHTML='<label>相手構築</label><select id="opp_picker_select"></select><button class="btn" id="opp_picker_apply">反映</button>';
           bar.appendChild(box);
           const sel=box.querySelector('#opp_picker_select');
           teams.forEach((t,idx)=>{
@@ -282,10 +282,10 @@
             const cards=Array.from(document.querySelectorAll('#opp .card'));
             (teams[i].mons||[]).slice(0,6).forEach((m,idx)=>{
               const input=cards[idx]?.querySelector('[data-poke-input]');
-              if(input){ input.value=m.name||\"\"; input.dispatchEvent(new Event('change',{bubbles:true})); }
+              if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
             });
             box.remove();
-            document.querySelector('.tab[data-tab=\"six\"]').click();
+            document.querySelector('.tab[data-tab="six"]').click();
           };
         }catch(e){ alert('JSONの形式を読み取れませんでした'); console.error(e); }
       }; rd.readAsText(file,'utf-8');
@@ -305,32 +305,32 @@
   function collectParty(root){
     const cards=Array.from(root.querySelectorAll('.card')); const members=[];
     cards.slice(0,6).forEach(c=>{
-      const name=c.querySelector('[data-poke-input]')?.value?.trim()||\"\";
-      const nature=c.querySelector('[data-nature]')?.value||\"てれや\";
+      const name=c.querySelector('[data-poke-input]')?.value?.trim()||"";
+      const nature=c.querySelector('[data-nature]')?.value||"てれや";
       const evs={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> evs[k]=Number(c.querySelector('[data-ev-'+k+']')?.value||0));
       const moves=Array.from(c.querySelectorAll('[data-move-input]')).map(i=>i.value.trim()).filter(Boolean);
       members.push({name,nature,evs,moves});
     });
-    return {name:document.getElementById('party_name').value||\"\", members};
+    return {name:document.getElementById('party_name').value||"", members};
   }
   function applyPartyToSelf(party){
     const cards=Array.from(document.querySelectorAll('#self .card'));
     (party.members||[]).slice(0,6).forEach((m,i)=>{
       const c=cards[i]; if(!c) return;
-      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||\"\"; name.dispatchEvent(new Event('change',{bubbles:true})); }
+      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||""; name.dispatchEvent(new Event('change',{bubbles:true})); }
       ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
       const mvInputs=Array.from(c.querySelectorAll('[data-move-input]'));
       mvInputs.forEach((inp,idx)=>{
         const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
-        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=canonType(mvObj.t)||\"\"; if(cat) cat.value=mvObj.c||\"\"; if(p) p.value=mvObj.p||0; } } }
-        else { inp.value=\"\"; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=\"\"; if(cat) cat.value=\"\"; if(p) p.value=\"\"; } }
+        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=canonType(mvObj.t)||""; if(cat) cat.value=mvObj.c||""; if(p) p.value=mvObj.p||0; } } }
+        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
       });
     });
-    document.querySelector('.tab[data-tab=\"six\"]').click();
+    document.querySelector('.tab[data-tab="six"]').click();
   }
 
   function readMonFromPanel(panel){
-    const nm=(panel.querySelector('[data-poke-input]')?.value||\"\").trim();
+    const nm=(panel.querySelector('[data-poke-input]')?.value||"").trim();
     const nat=panel.querySelector('[data-nature]')?.value||'てれや';
     const ev={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> ev[k]=Number(panel.querySelector('[data-ev-'+k+']')?.value||0));
     const stat=statBlock(nm,ev,nat,50,31);
@@ -365,41 +365,41 @@
   }
 
   function renderBuildCards(){
-    const wrap=document.getElementById('build_cards'); wrap.innerHTML=\"\";
+    const wrap=document.getElementById('build_cards'); wrap.innerHTML="";
     const limit=Number(document.getElementById('build_rank_max').value||100);
     const kw = document.getElementById('build_search').value.toString().trim().toLowerCase();
     const teams = buildDB.teams || [];
     let shown=0;
     teams.sort((a,b)=> (a.rank||9999)-(b.rank||9999)).forEach(t=>{
       if(t.rank && t.rank>limit) return;
-      if(kw && !t.mons.some(m=> (m.name||\"\").toLowerCase().includes(kw))) return;
+      if(kw && !t.mons.some(m=> (m.name||"").toLowerCase().includes(kw))) return;
       const card=document.createElement('div'); card.className='team-card';
-      const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||\"\"}</td><td>${m.item||\"\"}</td><td>${m.tera||\"\"}</td></tr>`).join('');
+      const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||""}</td><td>${m.item||""}</td><td>${m.tera||""}</td></tr>`).join('');
       card.innerHTML = `<h4>順位: ${t.rank||'-'}</h4>
-        <table class=\"team-table\"><thead><tr><th>#</th><th>ポケモン</th><th>持ち物</th><th>テラス</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class=\"row\" style=\"margin-top:6px\">
-          <button class=\"btn\" data-apply-party>→ パーティに反映（ポケモンのみ）</button>
-          <button class=\"btn\" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
+        <table class="team-table"><thead><tr><th>#</th><th>ポケモン</th><th>持ち物</th><th>テラス</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" data-apply-party>→ パーティに反映（ポケモンのみ）</button>
+          <button class="btn" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
         </div>`;
       card.querySelector('[data-apply-party]').addEventListener('click', ()=>{
-        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||\"\", nature:\"てれや\", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
+        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
         const root=document.getElementById('party'); const cards=Array.from(root.querySelectorAll('.card'));
         for(let i=0;i<6;i++){
           const c=cards[i]; if(!c) continue;
-          const m=(party.members||[])[i] || {name:\"\"};
-          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||\"\"; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
+          const m=(party.members||[])[i] || {name:""};
+          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
           ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=0; });
-          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=\"\"; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=\"\"; if(cat) cat.value=\"\"; if(p) p.value=\"\"; } });
+          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=""; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } });
         }
-        document.querySelector('.tab[data-tab=\"party\"]').click();
+        document.querySelector('.tab[data-tab="party"]').click();
       });
       card.querySelector('[data-apply-opp]').addEventListener('click', ()=>{
         const cards=Array.from(document.querySelectorAll('#opp .card'));
         (t.mons||[]).slice(0,6).forEach((m,i)=>{
           const input=cards[i]?.querySelector('[data-poke-input]');
-          if(input){ input.value=m.name||\"\"; input.dispatchEvent(new Event('change',{bubbles:true})); }
+          if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
         });
-        document.querySelector('.tab[data-tab=\"six\"]').click();
+        document.querySelector('.tab[data-tab="six"]').click();
       });
       wrap.appendChild(card); shown++;
     });
