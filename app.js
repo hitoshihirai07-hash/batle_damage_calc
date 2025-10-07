@@ -137,7 +137,9 @@
     let best=[0,0], bestMul=1, name="";
     for(const mvName of moves){
       const mv=moveByName(mvName); if(!mv) continue; if(mv.c==="変化"||!mv.p) continue;
-      const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:canonType(mv.t), attackerTypes:normTypeList(att.types), defenderTypes:normTypeList(def.types),
+      const mtype = canonType(mv.t);
+      if(!mtype || !(TYPE_CHART[mtype])) continue; // タイプ未設定や未知のタイプはスキップ
+      const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:mtype, attackerTypes:normTypeList(att.types), defenderTypes:normTypeList(def.types),
         teraType:document.getElementById('sel_tera').value||null, weather:document.getElementById('sel_weather').value||null, critical:document.getElementById('chk_crit').checked, burn:false, item:document.getElementById('sel_item').value||null, ability:document.getElementById('sel_ability').value||null, screen:document.getElementById('chk_screen').checked, format:'シングル'};
       const dmg=calcDamage(ctx);
       const mul = (Array.isArray(dmg)&&dmg.length>2)? dmg[2] : 1;
@@ -350,11 +352,14 @@
         const td=document.createElement('td');
         if(A.name && B.name && A.moves.length && !A.stat._unknown && !B.stat._unknown){
           const best=bestMoveDamage(A.stat,B.stat,{},A.moves);
-          const [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp);
-          const dmin = best.dmg[0], dmax = best.dmg[1];
+          let [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp);
+          let dmin = best.dmg[0], dmax = best.dmg[1];
+          if(best.mul===0){ mi=0; ma=0; dmin=0; dmax=0; }
           td.textContent=`${mi}-${ma}% (${dmin}-${dmax})`;
           const mulText=(best.mul===0?'×0 (無効)': `×${best.mul}`);
-          td.title = `${best.name||''} / ${mulText}`;
+          const atkTypes=(A.stat.types||[]).join('/');
+          const defTypes=(B.stat.types||[]).join('/');
+          td.title = `${best.name||''} / ${mulText} | 攻:${atkTypes} 技:${best.name||''} 防:${defTypes}`;
         }else if(A.name && B.name && (A.stat._unknown || B.stat._unknown)){
           td.textContent='—//?'; td.title='ポケモンデータ未登録';
         }else{ td.textContent='—//0'; }
