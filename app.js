@@ -413,21 +413,14 @@ if(msel){
 
 
 
-// v32: EV preset bars injection (six/party/single) and 252-fixed application
-(function(){
-  const WANT=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
-  const OLD2NEW={'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
-  const ROOTS=['six','party','single','solo'];
 
-  function makeBar(){
-    const bar=document.createElement('div'); bar.className='evbar7';
-    WANT.forEach(code=>{ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); });
-    return bar;
+/* removed broken injected block */
+return bar;
   }
 
   function findCards(root){
     // try known card wrappers; otherwise any block with >=6 number inputs
-    let cards=[root.querySelectorAll('.card, fieldset, .panel, .box')];
+    let cards=Array.from(root.querySelectorAll('.card, fieldset, .panel, .box'));
     if(cards.length===0){
       const blocks=[root.querySelectorAll('section, div')];
       cards = blocks.filter(bl=> bl.querySelectorAll('input[type="number"]').length>=6);
@@ -858,4 +851,47 @@ if(msel){
     if(document.getElementById('six')){ kick(); clearInterval(iv); }
   }, 250);
   // delegate click remains handled by v29 injector (data-evp)
+})();
+
+// v40: minimal safe EV preset injector (252 fixed; six/party/single)
+(function(){
+  const WANT=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+  function evMap(c){ return {'HA252':{hp:252,atk:252},'AS252':{atk:252,spe:252},'HB252':{hp:252,def:252},'HD252':{hp:252,spd:252},'CS252':{spa:252,spe:252},'BD252':{def:252,spd:252},'HC252':{hp:252,spa:252}}[c]||{}; }
+  function ensureBar(scope){
+    const cards = Array.from(scope.querySelectorAll('.card, fieldset, .panel, .box')).filter(c=> c.querySelectorAll('input[type="number"]').length>=6);
+    cards.forEach(card=>{
+      if(card.querySelector('.evbar7')) return;
+      const bar=document.createElement('div'); bar.className='evbar7';
+      WANT.forEach(code=>{ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); });
+      card.prepend(bar);
+    });
+  }
+  function findEVInputs(card){
+    const res={}; const sel=(k)=>card.querySelector(k);
+    res.hp = sel('input[name*="_ev_h"], input#*_ev_hp, input[placeholder="H"]') || sel('input[name*="hp"][type="number"]');
+    res.atk= sel('input[name*="_ev_a"], input#*_ev_atk, input[placeholder="A"]') || sel('input[name*="atk"][type="number"]');
+    res.def= sel('input[name*="_ev_b"], input#*_ev_def, input[placeholder="B"]') || sel('input[name*="def"][type="number"]');
+    res.spa= sel('input[name*="_ev_c"], input#*_ev_spa, input[placeholder="C"]') || sel('input[name*="spa"][type="number"]');
+    res.spd= sel('input[name*="_ev_d"], input#*_ev_spd, input[placeholder="D"]') || sel('input[name*="spd"][type="number"]');
+    res.spe= sel('input[name*="_ev_s"], input#*_ev_spe, input[placeholder="S"]') || sel('input[name*="spe"][type="number"]');
+    return res;
+  }
+  function apply(code, card){
+    const inputs=findEVInputs(card);
+    const evs=evMap(code);
+    const els=Object.values(inputs).filter(Boolean);
+    if(els.length<2) return;
+    els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+  }
+  function boot(){
+    ['six','party','single','solo'].forEach(id=>{ const r=document.getElementById(id); if(r) ensureBar(r); });
+  }
+  document.addEventListener('click', (e)=>{
+    const btn=e.target.closest('[data-evp]'); if(!btn) return;
+    const card=btn.closest('.card, fieldset, .panel, .box')||document;
+    apply(btn.dataset.evp, card);
+  });
+  document.addEventListener('DOMContentLoaded', boot);
+  setTimeout(boot, 400);
 })();
