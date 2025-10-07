@@ -130,7 +130,7 @@
       return 2/(2-stage);
     }
     // Early immunity check (redundant safety)
-    const mtype = canonType(ctx.moveType);
+    mtype = canonType(ctx.moveType);
     const dtypes = normTypeList(ctx.defenderTypes||[]);
     for(const dt of dtypes){
       if(IMMUNE_PAIRS.has([mtype, dt].join("@"))) return [0,0,0];
@@ -190,7 +190,7 @@
     let best=[0,0], bestMul=1, name="";
     for(const mvName of moves){
       const mv=moveByName(mvName); if(!mv) continue; if(mv.c==="変化"||!mv.p) continue;
-      const mtype = canonType(mv.t);
+      mtype = canonType(mv.t);
       if(!mtype || !(TYPE_CHART[mtype])) continue; // タイプ未設定や未知のタイプはスキップ
       const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:mtype, attackerTypes:normTypeList(att.types), defenderTypes:normTypeList(def.types),
         teraType:document.getElementById('sel_tera').value||null, weather:document.getElementById('sel_weather').value||null, critical:document.getElementById('chk_crit').checked, burn:false, item:document.getElementById('sel_item').value||null, ability:document.getElementById('sel_ability').value||null, screen:document.getElementById('chk_screen').checked, format:'シングル'};
@@ -416,7 +416,7 @@
         btn.addEventListener('click', ()=>{
           const aN=(aName&&aName.value||'').trim(), bN=(bName&&bName.value||'').trim();
           const mv= msel? moveByName(msel.value) : null;
-          const mtype = canonType((mtyp&&mtyp.value) || (mv&&mv.t) || '');
+          mtype = canonType((mtyp&&mtyp.value) || (mv&&mv.t) || '');
           const mcatv = (mcat&&mcat.value) || (mv&&mv.c) || '変化';
           const mp = Number((mpow&&mpow.value) || (mv&&mv.p) || 0);
 
