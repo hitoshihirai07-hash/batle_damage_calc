@@ -979,3 +979,62 @@ function collectParty(root){
   ensureTimer();
   const iv=setInterval(()=>{ const six=document.getElementById('six'); if(six){ clearInterval(iv); inject6x6(); } }, 250);
 })();
+
+
+// v30: normalize legacy six preset bars into unified 7-code bar (HA/AS/HB/HD/CS/BD/HC)
+(function(){
+  const WANT = ['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+  const MAP_OLD = {'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
+  function normalizeSix(){
+    const root = document.getElementById('six'); if(!root) return;
+    const cards = root.querySelectorAll('.card, fieldset, .panel, .box');
+    cards.forEach(card=>{
+      // 1) collect candidate buttons in this card
+      let btns = Array.from(card.querySelectorAll('button')).filter(b=>/\d{3}$/.test((b.textContent||'').trim()));
+      if(btns.length===0) return;
+      // 2) ensure single bar (.evbar7). If none, create and prepend.
+      let bar = card.querySelector('.evbar7'); 
+      if(!bar){ bar=document.createElement('div'); bar.className='evbar7'; card.prepend(bar); }
+      const seen = new Set();
+      // 3) move/rename valid buttons into bar; drop the others
+      btns.forEach(b=>{
+        let t=(b.textContent||'').replace(/\s+/g,'');
+        // map legacy to new
+        if(MAP_OLD[t]) t = MAP_OLD[t];
+        // keep only our allowed codes
+        if(!WANT.includes(t)) return;
+        if(seen.has(t)) return; // avoid duplicates
+        b.textContent=t; b.dataset.evp=t; b.classList.add('btn');
+        bar.appendChild(b);
+        seen.add(t);
+      });
+      // 4) add missing buttons
+      WANT.forEach(code=>{
+        if(!seen.has(code)){
+          const nb=document.createElement('button');
+          nb.className='btn'; nb.textContent=code; nb.dataset.evp=code;
+          bar.appendChild(nb);
+          seen.add(code);
+        }
+      });
+      // 5) remove stray legacy groups inside card (anything with legacy labels still残る場合に隠す)
+      Array.from(card.querySelectorAll('button')).forEach(b=>{
+        const t=(b.textContent||'').replace(/\s+/g,'');
+        if(!WANT.includes(t) && MAP_OLD[t]===undefined && b.closest('.evbar7')!==bar){
+          // 非EV用途のボタンは触らないため、ざっくりとクラス名で限定
+          if(b.closest('.ev-presets')||b.closest('.legacy-presets')){
+            b.parentElement.style.display='none';
+          }
+        }
+      });
+    });
+  }
+  // run once and also after short delay for late DOM
+  const kick = ()=>{ try{ normalizeSix(); }catch(e){ console.warn('six normalize failed', e);} };
+  document.addEventListener('DOMContentLoaded', kick);
+  setTimeout(kick, 600);
+  const iv = setInterval(()=>{
+    if(document.getElementById('six')){ kick(); clearInterval(iv); }
+  }, 250);
+  // delegate click remains handled by v29 injector (data-evp)
+})();

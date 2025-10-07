@@ -102,3 +102,15 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 /* style for injected 6x6 ev bar */
 .evbar7{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .evbar7 .btn{padding:4px 8px;border:1px solid var(--br);background:#132034;border-radius:8px}
+
+/* v30: move overlay timer to top-right and shrink */
+#bdc_timer{left:auto;right:12px;transform:none;top:8px}
+#bdc_timer .face{font-size:22px;padding:2px 8px}
+#bdc_timer button{padding:4px 8px;font-size:14px}
+#bdc_timer .inputs input{width:60px}
+@media (max-width: 640px){
+  #bdc_timer{right:8px;gap:6px}
+  #bdc_timer .face{font-size:20px}
+  #bdc_timer button{padding:3px 6px;font-size:13px}
+  #bdc_timer .inputs{display:none} /* 小画面は20分ボタンのみで運用 */
+}
