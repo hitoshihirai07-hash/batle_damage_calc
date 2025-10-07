@@ -765,3 +765,91 @@ function collectParty(root){
     });
   }
 })();
+
+
+// v27: ensure top timer handlers exist
+(function(){
+  const face=document.getElementById('tmr_face');
+  if(!face) return;
+  const btnStart=document.getElementById('tmr_start');
+  const btnPause=document.getElementById('tmr_pause');
+  const btnReset=document.getElementById('tmr_reset');
+  const btnQuick=document.getElementById('tmr_quick20');
+  const inMin=document.getElementById('tmr_min');
+  const inSec=document.getElementById('tmr_sec');
+  const btnSet=document.getElementById('tmr_set');
+  let target=20*60*1000, remain=target, running=false, last=0, rafId=0;
+  function fmt(ms){ const t=Math.max(0,Math.floor(ms)); const ds=Math.floor((t%1000)/100); const s=Math.floor(t/1000)%60; const m=Math.floor(t/60000); return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${ds}`; }
+  function draw(){ face.textContent=fmt(remain); face.style.animation = (remain<=10000&&running)?'blink 1s steps(2, start) infinite':''; }
+  function loop(ts){ if(!running) return; if(!last) last=ts; const dt=ts-last; last=ts; remain=Math.max(0,remain-dt); draw(); if(remain<=0){ running=false; const a=new AudioContext(); const o=a.createOscillator(); o.connect(a.destination); o.frequency.value=880; o.start(); setTimeout(()=>{o.stop();a.close()},200); } else { rafId=requestAnimationFrame(loop);} }
+  btnStart&& (btnStart.onclick=()=>{ if(!running){ running=true; last=0; rafId=requestAnimationFrame(loop);} });
+  btnPause&& (btnPause.onclick=()=>{ running=false; cancelAnimationFrame(rafId); draw(); });
+  btnReset&& (btnReset.onclick=()=>{ running=false; cancelAnimationFrame(rafId); remain=target; draw(); });
+  btnQuick&& (btnQuick.onclick=()=>{ running=false; cancelAnimationFrame(rafId); target=20*60*1000; remain=target; if(inMin) inMin.value=20; if(inSec) inSec.value=0; draw(); });
+  btnSet&& (btnSet.onclick=()=>{ const m=Math.max(0,Number(inMin?.value||0)); const s=Math.max(0,Math.min(59,Number(inSec?.value||0))); running=false; cancelAnimationFrame(rafId); target=(m*60+s)*1000; remain=target; draw(); });
+  draw();
+})();
+
+
+// v27: normalize six EV preset labels to [HA252, AS252, HB252, HD252, CS252, BD252, HC252]
+(function(){
+  const six=document.getElementById('six');
+  if(!six) return;
+  const mapOldToNew = {'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
+  function ensureBar(card){
+    // find an existing bar: any container having buttons matching known codes
+    let bar = card.querySelector('.ev-presets, .six-ev, .evbar');
+    if(!bar){
+      bar=document.createElement('div'); bar.className='ev-presets six-ev'; card.prepend(bar);
+    }
+    // rename old buttons && collect existing codes
+    const exists = new Set();
+    bar.querySelectorAll('button').forEach(b=>{
+      const t=(b.textContent||'').replace(/\s+/g,'');
+      if(mapOldToNew[t]){ b.textContent=mapOldToNew[t]; b.dataset.evp=mapOldToNew[t]; exists.add(mapOldToNew[t]); }
+      else if(/^[A-Z]{2}252$/.test(t)){ b.dataset.evp=t; exists.add(t); }
+      else { b.remove(); }
+    });
+    const want=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+    want.forEach(code=>{
+      if(!exists.has(code)){
+        const btn=document.createElement('button');
+        btn.className='btn'; btn.textContent=code; btn.dataset.evp=code;
+        bar.appendChild(btn);
+      }
+    });
+  }
+  function findEVInputs(card){
+    const res={};
+    const byPH={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
+    for(const k in byPH){
+      const el = card.querySelector(`input[placeholder="${byPH[k]}"]`);
+      if(el) res[k]=el;
+    }
+    const cand = card.querySelectorAll('input[type="number"]');
+    cand.forEach(el=>{
+      const key=(el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'');
+      const K=key.toLowerCase();
+      if(!res.hp  && ('ev_h' in K || 'hp' in K || 'h ' in K))
+    });
+    return res;
+  }
+  function apply(code, card){
+    const map={'HA252':{hp:252,atk:252},'AS252':{atk:252,spe:252},'HB252':{hp:252,def:252},'HD252':{hp:252,spd:252},'CS252':{spa:252,spe:252},'BD252':{def:252,spd:252},'HC252':{hp:252,spa:252}};
+    const inputs=(window._findSixEVInputs||findEVInputs)(card);
+    const els = Object.values(inputs).filter(Boolean);
+    if(els.length<2) return;
+    els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
+    const evs=map[code]||{};
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    let total=0; els.forEach(el=> total += Number(el.value||0));
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  six.querySelectorAll('.card').forEach(ensureBar);
+  six.addEventListener('click', (e)=>{
+    const btn=e.target.closest('[data-evp]');
+    if(!btn) return;
+    const card=btn.closest('.card')||six;
+    apply(btn.dataset.evp, card);
+  });
+})();
