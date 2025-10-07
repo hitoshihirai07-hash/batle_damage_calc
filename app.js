@@ -101,7 +101,18 @@
     };
   }
 
-  function applyTypeChips(panel, types){ const box = document.querySelector('[data-typechips]', panel); if(!box) return; box.innerHTML = ""; (types||[]).forEach(t=>{ const span=document.createElement('span'); span.className='chip'; span.textContent=t; box.appendChild(span); }); }
+  // (Fix) 正しいスコープでタイプチップを更新
+  function applyTypeChips(panel, types){
+    if(!panel) return;
+    const box = panel.querySelector('[data-typechips]');
+    if(!box) return;
+    box.innerHTML = "";
+    (types||[]).forEach(t=>{
+      const span=document.createElement('span');
+      span.className='chip'; span.textContent=t;
+      box.appendChild(span);
+    });
+  }
 
   function bestMoveDamage(att,def,env,moves){
     let best=[0,0], name="";
@@ -189,6 +200,35 @@
     return teams;
   }
 
+  // パーティ → 6×6（自分）に反映
+  function collectParty(root){
+    const cards=Array.from(root.querySelectorAll('.card')); const members=[];
+    cards.slice(0,6).forEach(c=>{
+      const name=c.querySelector('[data-poke-input]')?.value?.trim()||"";
+      const nature=c.querySelector('[data-nature]')?.value||"てれや";
+      const evs={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> evs[k]=Number(c.querySelector('[data-ev-'+k+']')?.value||0));
+      const moves=Array.from(c.querySelectorAll('[data-move-input]')).map(i=>i.value.trim()).filter(Boolean);
+      const typed=Array.from(c.querySelectorAll('[data-typechips] .chip')).map(x=>x.textContent.trim());
+      members.push({name,nature,evs,moves,types:typed});
+    });
+    return {name:document.getElementById('party_name').value||"", members};
+  }
+  function applyPartyToSelf(party){
+    const cards=Array.from(document.querySelectorAll('#self .card'));
+    (party.members||[]).slice(0,6).forEach((m,i)=>{
+      const c=cards[i]; if(!c) return;
+      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||""; name.dispatchEvent(new Event('change',{bubbles:true})); }
+      ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
+      const mvInputs=Array.from(c.querySelectorAll('[data-move-input]'));
+      mvInputs.forEach((inp,idx)=>{
+        const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
+        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=mvObj.t||""; if(cat) cat.value=mvObj.c||""; if(p) p.value=mvObj.p||0; } } }
+        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
+      });
+    });
+    document.querySelector('.tab[data-tab="six"]').click();
+  }
+
   function renderBuildCards(){
     const wrap=document.getElementById('build_cards'); wrap.innerHTML="";
     const limit=Number(document.getElementById('build_rank_max').value||100);
@@ -208,7 +248,15 @@
         </div>`;
       card.querySelector('[data-apply-party]').addEventListener('click', ()=>{
         const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
-        fillPartyEditor(document.getElementById('party'), party);
+        // パーティエディタへ表示
+        const root=document.getElementById('party'); const cards=Array.from(root.querySelectorAll('.card'));
+        for(let i=0;i<6;i++){
+          const c=cards[i]; if(!c) continue;
+          const m=(party.members||[])[i] || {name:""};
+          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
+          ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=0; });
+          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=""; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } });
+        }
         document.querySelector('.tab[data-tab="party"]').click();
       });
       card.querySelector('[data-apply-opp]').addEventListener('click', ()=>{
@@ -224,23 +272,6 @@
     document.getElementById('build_count').textContent = `表示 ${shown} 件 / 読込 ${teams.length} 件`;
   }
 
-  function fillPartyEditor(root, party){
-    document.getElementById('party_name').value = party.name || "";
-    const cards=Array.from(root.querySelectorAll('.card'));
-    for(let i=0;i<6;i++){
-      const c=cards[i]; if(!c) continue;
-      const m=(party.members||[])[i] || {name:"",nature:"てれや", evs:{}, moves:[]};
-      const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
-      const nat=c.querySelector('[data-nature]'); if(nat){ nat.value=m.nature||'てれや'; }
-      const evk=['hp','atk','def','spa','spd','spe']; evk.forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
-      const mvInputs=c.querySelectorAll('[data-move-input]'); mvInputs.forEach((inp,idx)=>{
-        const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
-        if(mv&&mv.name){ inp.value=mv.name; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=mv.type||""; if(cat) cat.value=mv.category||""; if(p) p.value=mv.power||0; } }
-        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
-      });
-    }
-  }
-
   function buildUI(){
     document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click',()=>{
       document.querySelectorAll('.tab').forEach(u=>u.setAttribute('aria-selected', u===t?'true':'false'));
@@ -253,7 +284,7 @@
 
     buildSix(); buildParty(); wireCommonInputs(document);
 
-    // 構築記事ファイル読込：ここで buildDB.raw/teams を正しく更新
+    // 構築記事ファイル読込
     document.getElementById('btn_build_import').addEventListener('click', ()=> document.getElementById('build_import_file').click());
     document.getElementById('build_import_file').addEventListener('change', ev=>{
       const file=ev.target.files[0]; if(!file) return;
@@ -302,9 +333,15 @@
       }; rd.readAsText(file,'utf-8');
     });
 
-    // 一括計算（上・下どちらのボタンも同じ動作）
+    // 一括計算
     document.getElementById('btn_calc_all_top').addEventListener('click', calcSixMatrix);
     document.getElementById('btn_calc_all').addEventListener('click', calcSixMatrix);
+
+    // (New) パーティ → 6×6（自分）に反映
+    document.getElementById('btn_party_apply_self').addEventListener('click', ()=>{
+      const party = collectParty(document.getElementById('party'));
+      applyPartyToSelf(party);
+    });
   }
 
   function readMonFromPanel(panel){
