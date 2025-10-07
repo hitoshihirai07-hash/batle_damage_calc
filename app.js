@@ -791,26 +791,24 @@ function collectParty(root){
 })();
 
 
-// v27: normalize six EV preset labels to [HA252, AS252, HB252, HD252, CS252, BD252, HC252]
+
+// v28: normalize six EV preset labels to [HA252, AS252, HB252, HD252, CS252, BD252, HC252] and apply in-card
 (function(){
   const six=document.getElementById('six');
   if(!six) return;
-  const mapOldToNew = {'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
+  const want=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+  const mapOldToNew={'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
+
   function ensureBar(card){
-    // find an existing bar: any container having buttons matching known codes
     let bar = card.querySelector('.ev-presets, .six-ev, .evbar');
-    if(!bar){
-      bar=document.createElement('div'); bar.className='ev-presets six-ev'; card.prepend(bar);
-    }
-    // rename old buttons && collect existing codes
+    if(!bar){ bar=document.createElement('div'); bar.className='ev-presets six-ev'; card.prepend(bar); }
     const exists = new Set();
     bar.querySelectorAll('button').forEach(b=>{
       const t=(b.textContent||'').replace(/\s+/g,'');
-      if(mapOldToNew[t]){ b.textContent=mapOldToNew[t]; b.dataset.evp=mapOldToNew[t]; exists.add(mapOldToNew[t]); }
-      else if(/^[A-Z]{2}252$/.test(t)){ b.dataset.evp=t; exists.add(t); }
+      const mapped = mapOldToNew[t] || ( /^[A-Z]{2}252$/.test(t) ? t : '' );
+      if(mapped){ b.textContent=mapped; b.dataset.evp=mapped; exists.add(mapped); }
       else { b.remove(); }
     });
-    const want=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
     want.forEach(code=>{
       if(!exists.has(code)){
         const btn=document.createElement('button');
@@ -819,37 +817,67 @@ function collectParty(root){
       }
     });
   }
+
   function findEVInputs(card){
     const res={};
     const byPH={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
+    // 1) placeholder
     for(const k in byPH){
       const el = card.querySelector(`input[placeholder="${byPH[k]}"]`);
       if(el) res[k]=el;
     }
-    const cand = card.querySelectorAll('input[type="number"]');
+    // 2) heuristics by name/id/label
+    const cand = card.querySelectorAll('input[type="number"], input[type="text"]');
     cand.forEach(el=>{
-      const key=(el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'');
-      const K=key.toLowerCase();
-      if(!res.hp  && ('ev_h' in K || 'hp' in K || 'h ' in K))
+      const key=((el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'')).toLowerCase();
+      if(!res.hp  && (key.includes('ev_h')  || key.includes('hp')))  res.hp=el;
+      if(!res.atk && (key.includes('ev_a')  || key.includes('atk') || key.includes('こうげき'))) res.atk=el;
+      if(!res.def && (key.includes('ev_b')  || key.includes('def') || key.includes('ぼうぎょ'))) res.def=el;
+      if(!res.spa && (key.includes('ev_c')  || key.includes('spa') || key.includes('とくこう') || key.includes('c '))) res.spa=el;
+      if(!res.spd && (key.includes('ev_d')  || key.includes('spd') || key.includes('とくぼう') || key.includes('d '))) res.spd=el;
+      if(!res.spe && (key.includes('ev_s')  || key.includes('spe') || key.includes('すばやさ') || key.includes('素早'))) res.spe=el;
     });
+    // 3) fallback: first row with >=6 numeric inputs
+    if(Object.values(res).filter(Boolean).length<6){
+      const rows = Array.from(card.querySelectorAll('.row, .ev-row, fieldset'));
+      for(const row of rows){
+        const nums = row.querySelectorAll('input[type="number"]');
+        if(nums.length>=6){
+          const order=['hp','atk','def','spa','spd','spe'];
+          order.forEach((k,i)=>{ if(!res[k] && nums[i]) res[k]=nums[i]; });
+          break;
+        }
+      }
+    }
     return res;
   }
-  function apply(code, card){
-    const map={'HA252':{hp:252,atk:252},'AS252':{atk:252,spe:252},'HB252':{hp:252,def:252},'HD252':{hp:252,spd:252},'CS252':{spa:252,spe:252},'BD252':{def:252,spd:252},'HC252':{hp:252,spa:252}};
-    const inputs=(window._findSixEVInputs||findEVInputs)(card);
+
+  function applyPreset(code, card){
+    const map={
+      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+      'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+      'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+      'HC252':{hp:252,spa:252}
+    };
+    const evs=map[code]||{};
+    const inputs=findEVInputs(card);
     const els = Object.values(inputs).filter(Boolean);
     if(els.length<2) return;
-    els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
-    const evs=map[code]||{};
+    // reset
+    els.forEach(el=>{ if('value' in el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // set
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // +4 HP if room
     let total=0; els.forEach(el=> total += Number(el.value||0));
     if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
+
   six.querySelectorAll('.card').forEach(ensureBar);
   six.addEventListener('click', (e)=>{
     const btn=e.target.closest('[data-evp]');
     if(!btn) return;
     const card=btn.closest('.card')||six;
-    apply(btn.dataset.evp, card);
+    applyPreset(btn.dataset.evp, card);
   });
 })();
+;
