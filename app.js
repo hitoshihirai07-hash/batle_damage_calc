@@ -117,6 +117,18 @@
   function abilityMul(ab,mt,cat){ if(!ab) return 1.0; if(/てきおうりょく/.test(ab)) return 1.33; if(/もらいび/.test(ab)&&mt==="ほのお")return 1.5; return 1.0; }
 
   function calcDamage(ctx){
+    // Early immunity (already present elsewhere)
+    const mtype = canonType(ctx.moveType);
+    const dtypes = normTypeList(ctx.defenderTypes||[]);
+    for(const dt of dtypes){
+      if(IMMUNE_PAIRS && IMMUNE_PAIRS.has([mtype, dt].join("@"))) return [0,0,0];
+    }
+    // Rank helper
+    function stageMult(stage){
+      stage = Math.max(-6, Math.min(6, Number(stage||0)));
+      if(stage>=0) return (2+stage)/2;
+      return 2/(2-stage);
+    }
     // Early immunity check (redundant safety)
     const mtype = canonType(ctx.moveType);
     const dtypes = normTypeList(ctx.defenderTypes||[]);
@@ -413,7 +425,11 @@
 
           const ctx = {level:50, atk:A.atk, spa:A.spa, def:B.def, spd:B.spd, power:mp, category:mcatv, moveType:mtype, attackerTypes:A.types, defenderTypes:B.types,
             teraType:(document.getElementById('sc_a_tera')||{}).value||null, weather:(document.getElementById('sc_weather')||{}).value||null,
-            critical:false, burn:false, item:(document.getElementById('sc_a_item')||{}).value||null, ability:(document.getElementById('sc_a_ability')||{}).value||null, screen:(document.getElementById('sc_b_screen')||{}).checked };
+            critical: !!(document.getElementById('sc_a_crit')||{}).checked, burn: !!(document.getElementById('sc_a_burn')||{}).checked,
+            item:(document.getElementById('sc_a_item')||{}).value||null, ability:(document.getElementById('sc_a_ability')||{}).value||null,
+            screenPhys: !!(document.getElementById('sc_b_reflect')||{}).checked, screenSpec: !!(document.getElementById('sc_b_lightscreen')||{}).checked,
+            atkRank: (document.getElementById('sc_a_rank_atk')||{}).value, defRank: (document.getElementById('sc_b_rank_def')||{}).value
+          };
 
           const dmg = calcDamage(ctx);
           const hp = B.hp||1;
@@ -437,7 +453,7 @@
                         const beep=document.getElementById('tmr_beep');
       let target=20*60*1000; // default 20m
       let remain=target;
-      let running=false, last=0, rafId=0, turns=0;
+      let running=false, last=0, rafId=0;
 
       function fmt(ms){
         const s=Math.max(0,Math.floor(ms/1000)), m=Math.floor(s/60), ss=s%60, ds=Math.floor((ms%1000)/100);

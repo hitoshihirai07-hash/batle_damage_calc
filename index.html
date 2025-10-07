@@ -98,6 +98,8 @@
         <div class="row"><label>名前</label><input type="text" id="sc_a_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_a_types"></div></div>
         <div class="row"><label>性格</label><select id="sc_a_nature"><option>てれや</option><option>いじっぱり</option><option>ようき</option><option>ひかえめ</option><option>おくびょう</option><option>ずぶとい</option><option>おだやか</option></select></div>
         <div class="row"><span class="pill">EV</span><input type="number" id="sc_a_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_a_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_a_ev_def" placeholder="B" value="0"/><input type="number" id="sc_a_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_a_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_a_ev_spe" placeholder="S" value="0"/></div>
+        <div class="row"><div class="rank"><label>攻撃ランク</label><select id="sc_a_rank_atk"><option>-6</option><option>-5</option><option>-4</option><option>-3</option><option>-2</option><option>-1</option><option selected>0</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option></select></div></div>
+        <div class="row"><label><input type="checkbox" id="sc_a_burn"/>やけど</label><label style="margin-left:10px"><input type="checkbox" id="sc_a_crit"/>急所</label></div>
         <div class="ev-presets" id="sc_a_ev_presets">
           <button class="btn" data-evp="HA252">HA252</button>
           <button class="btn" data-evp="AS252">AS252</button>
@@ -115,6 +117,8 @@
         <div class="row"><label>名前</label><input type="text" id="sc_b_name" placeholder="ポケモン" list="dl_pokemon"/><div class="chips" data-typechips id="sc_b_types"></div></div>
         <div class="row"><label>性格</label><select id="sc_b_nature"><option>てれや</option><option>ずぶとい</option><option>おだやか</option><option>ひかえめ</option><option>おくびょう</option></select></div>
         <div class="row"><span class="pill">EV</span><input type="number" id="sc_b_ev_hp" placeholder="H" value="0"/><input type="number" id="sc_b_ev_atk" placeholder="A" value="0"/><input type="number" id="sc_b_ev_def" placeholder="B" value="0"/><input type="number" id="sc_b_ev_spa" placeholder="C" value="0"/><input type="number" id="sc_b_ev_spd" placeholder="D" value="0"/><input type="number" id="sc_b_ev_spe" placeholder="S" value="0"/></div>
+        <div class="row"><div class="rank"><label>防御ランク</label><select id="sc_b_rank_def"><option>-6</option><option>-5</option><option>-4</option><option>-3</option><option>-2</option><option>-1</option><option selected>0</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option><option>+5</option><option>+6</option></select></div></div>
+        <div class="row"><label><input type="checkbox" id="sc_b_reflect"/>リフレクター</label><label style="margin-left:10px"><input type="checkbox" id="sc_b_lightscreen"/>ひかりのかべ</label><label style="margin-left:10px">天候</label><select id="sc_weather"><option value="">なし</option><option>雨</option><option>晴れ</option><option>砂</option><option>雪</option></select></div>
         <div class="ev-presets" id="sc_b_ev_presets">
           <button class="btn" data-evp="HA252">HA252</button>
           <button class="btn" data-evp="AS252">AS252</button>
@@ -148,10 +152,7 @@
         </div>
       </div>
       <div class="timer-row">
-        <button class="timer-btn" id="tmr_turn">ターン＋</button>
-        <span class="pill" id="tmr_turn_out">Turn: 0</span>
-        <button class="timer-btn" id="tmr_lap">ラップ</button>
-        <span class="small">（ラップはログに追記）</span>
+                    <span class="small">（ラップはログに追記）</span>
       </div>
       <div class="panel" style="display:block">
         <h4>ログ</h4>

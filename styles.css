@@ -66,3 +66,7 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 /* v20: EV preset buttons for single calc */
 .ev-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .ev-presets .btn{padding:6px 8px}
+
+/* v21 single calc controls */
+.row .rank{display:inline-flex;gap:6px;align-items:center}
+.row .rank select{min-width:64px}
