@@ -476,14 +476,11 @@
       
       
 
-      const setBtn=document.getElementById('tmr_set');
+      const quick20=document.getElementById('tmr_quick20'); const setBtn=document.getElementById('tmr_set');
       const inMin=document.getElementById('tmr_min');
       const inSec=document.getElementById('tmr_sec');
-      if(setBtn){ setBtn.onclick=()=>{ const m=Math.max(0,Number(inMin?.value||0)); const s=Math.max(0,Math.min(59,Number(inSec?.value||0))); target=(m*60+s)*1000; remain=target; draw(); addLog(`Manual: ${m}m${s}s に設定`); }; }
-
-      document.querySelectorAll('[data-preset]').forEach(b=> b.addEventListener('click', ()=>{
-        const sec = Number(b.dataset.preset||0); target = sec*1000; remain=target; draw(); addLog(`Preset: ${sec}s に設定`);
-      }));
+      if(quick20){ quick20.onclick=()=>{ target=20*60*1000; remain=target; if(inMin) inMin.value=20; if(inSec) inSec.value=0; draw(); }; }
+      if(setBtn){ setBtn.onclick=()=>{ const m=Math.max(0,Number(inMin?.value||0)); const s=Math.max(0,Math.min(59,Number(inSec?.value||0))); target=(m*60+s)*1000; remain=target; draw(); }; }
 
       draw();
     })();
@@ -702,4 +699,69 @@ function collectParty(root){
       bar.querySelectorAll('[data-evp]').forEach(btn=> btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp)));
     });
   }catch(e){ console.error('six-ev preset inject failed', e); }
+})();
+
+
+// v25: stronger EV input resolver within a six card
+(function(){
+  function findEVInputs(card){
+    const result={};
+    // 1) placeholder H/A/B/C/D/S
+    const byPH={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
+    for(const k in byPH){
+      const el = card.querySelector(`input[placeholder="${byPH[k]}"]`);
+      if(el) result[k]=el;
+    }
+    // 2) name/id heuristics
+    const cand = card.querySelectorAll('input[type="number"]');
+    cand.forEach(el=>{
+      const key=(el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'');
+      const m=(p)=> key.toLowerCase().includes(p);
+      if(!result.hp && (m('ev_h') or m('hp'))) result.hp=el
+      if(!result.atk && (m('ev_a') or m('atk'))) result.atk=el
+      if(!result.def && (m('ev_b') or m('def'))) result.def=el
+      if(!result.spa && (m('ev_c') or m('spa'))) result.spa=el
+      if(!result.spd && (m('ev_d') or m('spd'))) result.spd=el
+      if(!result.spe && (m('ev_s') or m('spe'))) result.spe=el
+    });
+    // 3) fallback: pick first 6 numeric inputs inside a row that seems EV row
+    if(Object.keys(result).length<6){
+      const rows = Array.from(card.querySelectorAll('.row'));
+      for(const row of rows){
+        const nums = row.querySelectorAll('input[type="number"]');
+        if(nums.length>=6){
+          const order=['hp','atk','def','spa','spd','spe'];
+          order.forEach((k,i)=>{ if(!result[k] && nums[i]) result[k]=nums[i]; });
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  function applyPresetToCard(card, code){
+    const map={
+      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+      'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+      'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+      'HC252':{hp:252,spa:252}
+    };
+    const evs=map[code]||{};
+    const inputs=findEVInputs(card);
+    const els = Object.values(inputs).filter(Boolean);
+    if(els.length<2) return;
+    els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    let total=0; els.forEach(el=> total += Number(el.value||0));
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  // Delegate click from #six
+  const sixRoot = document.getElementById('six');
+  if(sixRoot){
+    sixRoot.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-evp]');
+      if(!btn) return;
+      const card = btn.closest('.card') || btn.closest('[data-card]') || sixRoot;
+      applyPresetToCard(card, btn.dataset.evp);
+    });
+  }
 })();

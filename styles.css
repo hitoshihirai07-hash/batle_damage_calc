@@ -73,3 +73,11 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 
 /* v23: hide any extra timer docks just in case */
 .timer-dock:not(:first-of-type){display:none!important}
+
+/* v25 timer/top-only */
+.timer-dock{position:sticky;top:6px;z-index:50;display:flex;gap:10px;align-items:center;justify-content:flex-start;background:#0b1220;border:1px solid var(--br);border-radius:12px;padding:8px 10px;margin:6px 0}
+.timer-dock:not(:first-of-type){display:none!important}
+.timer-mini{font-size:28px;font-weight:800;padding:4px 8px;border:1px solid var(--br);border-radius:10px;background:#0f172a}
+.timer-btn{padding:6px 10px}
+.timer-input{display:flex;gap:6px;align-items:center}
+.timer-input input{width:70px}
