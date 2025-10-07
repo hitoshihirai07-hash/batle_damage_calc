@@ -400,7 +400,8 @@ if(bName){ bName.addEventListener('change', ()=>{}); }); });
         // apply
         for(const k in evs){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=evs[k]; }
         // assign 4 to HP if total<508
-        /* removed auto +0 HP rule */)); }
+        /* removed auto HP rule */
+        }
   }
   document.querySelectorAll('.six-ev').forEach(bar=>{
     const card = bar.closest('.card');
@@ -575,7 +576,8 @@ if(bName){ bName.addEventListener('change', ()=>{}); }); });
     if(els.length<2) return;
     els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-    /* removed auto +0 HP rule */)); }
+    /* removed auto HP rule */
+        }
   }
   // Delegate click from #six
   const sixRoot = document.getElementById('six');
