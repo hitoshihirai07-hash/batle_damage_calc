@@ -404,7 +404,7 @@
         for(const k in evs){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=evs[k]; }
         // assign 4 to HP if total<508
         let total=0; for(const k in ids){ const el=document.getElementById(prefix+ids[k]); total+= Number(el&&el.value||0); }
-        if(total<=504){ const hpEl=document.getElementById(prefix+ids['hp']); if(hpEl) hpEl.value = Number(hpEl.value||0)+4; }
+        if(total<=504){ const hpEl=document.getElementById(prefix+ids['hp']); if(hpEl) hpEl.value = Number(hpEl.value||0); }
       
       }
 
