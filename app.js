@@ -376,11 +376,8 @@
           if(mv){ if(!mtyp.value) mtyp.value=canonType(mv.t)||''; if(!mcat.value) mcat.value=mv.c||''; if(!mpow.value||mpow.value==='0') mpow.value=mv.p||0; }
         });
       }
-      if(aName){
-        aName.addEventListener('change', ()=>{ const info=pokeInfo(aName.value||''); aTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; aTypes.appendChild(s); }); });
-      }
-      if(bName){
-        bName.addEventListener('change', ()=>{ const info=pokeInfo(bName.value||''); bTypes.innerHTML=''; (info?.types||[]).forEach(t=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; bTypes.appendChild(s); }); });
+      if(aName){ aName.addEventListener('change', ()=>{}); }
+if(bName){ bName.addEventListener('change', ()=>{}); }); });
       }
 
       function readEV(prefix){
@@ -429,9 +426,9 @@
 
   function findCards(root){
     // try known card wrappers; otherwise any block with >=6 number inputs
-    let cards=[...root.querySelectorAll('.card, fieldset, .panel, .box')];
+    let cards=[root.querySelectorAll('.card, fieldset, .panel, .box')];
     if(cards.length===0){
-      const blocks=[...root.querySelectorAll('section, div')];
+      const blocks=[root.querySelectorAll('section, div')];
       cards = blocks.filter(bl=> bl.querySelectorAll('input[type="number"]').length>=6);
     }
     return cards;
@@ -451,7 +448,7 @@
         else card.prepend(bar);
       }else{
         // fill不足
-        const seen=new Set([...card.querySelectorAll('.evbar7 [data-evp]')].map(x=>x.dataset.evp));
+        const seen=new Set([card.querySelectorAll('.evbar7 [data-evp]')].map(x=>x.dataset.evp));
         const bar=card.querySelector('.evbar7');
         WANT.forEach(code=>{
           if(!seen.has(code)){ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); }
@@ -479,7 +476,7 @@
     });
     // fallback: first row with >=6 numeric inputs
     if(Object.values(res).filter(Boolean).length<6){
-      const rows=[...scope.querySelectorAll('.row,.ev-row,fieldset,.grid')];
+      const rows=[scope.querySelectorAll('.row,.ev-row,fieldset,.grid')];
       for(const row of rows){
         const nums=row.querySelectorAll('input[type="number"]');
         if(nums.length>=6){
@@ -742,7 +739,7 @@
   function inject6x6(){
     const root=document.getElementById('six'); if(!root) return;
     // find candidate cards: any container with at least 6 numeric inputs -> treat as EV row holder
-    const cards=[...root.querySelectorAll('.card, fieldset, .panel, .box')];
+    const cards=[root.querySelectorAll('.card, fieldset, .panel, .box')];
     cards.forEach(card=>{
       const nums=card.querySelectorAll('input[type="number"]');
       if(nums.length<6) return;
@@ -788,7 +785,7 @@
       if(!res.spe && (key.includes('ev_s')||key.includes('spe')||key.includes('すばやさ')||key.includes('素早'))) res.spe=el;
     });
     if(Object.values(res).filter(Boolean).length<6){
-      const rows=[...card.querySelectorAll('.row, .ev-row, fieldset, .grid')];
+      const rows=[card.querySelectorAll('.row, .ev-row, fieldset, .grid')];
       for(const row of rows){
         const nums=row.querySelectorAll('input[type="number"]');
         if(nums.length>=6){ const order=['hp','atk','def','spa','spd','spe']; order.forEach((k,i)=>{ if(!res[k]&&nums[i]) res[k]=nums[i]; }); break; }
