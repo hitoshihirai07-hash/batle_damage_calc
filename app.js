@@ -385,9 +385,8 @@ if(msel){
 }
 
       if(aName){ aName.addEventListener('change', ()=>{}); }
-if(bName){ bName.addEventListener('change', ()=>{}); }); });
+      if(bName){ bName.addEventListener('change', ()=>{}); }
       }
-
       function readEV(prefix){
         const get=(id)=> Number(document.getElementById(prefix+id).value||0);
         return {hp:get('_ev_hp'), atk:get('_ev_atk'), def:get('_ev_def'), spa:get('_ev_spa'), spd:get('_ev_spd'), spe:get('_ev_spe')};
@@ -409,14 +408,7 @@ if(bName){ bName.addEventListener('change', ()=>{}); }); });
         for(const k in evs){ const el=document.getElementById(prefix+ids[k]); if(el) el.value=evs[k]; }
         // assign 4 to HP if total<508
         /* removed auto HP rule */
-        }
   }
-  document.querySelectorAll('.six-ev').forEach(bar=>{
-    const card = bar.closest('.card');
-    bar.querySelectorAll('[data-evp]').forEach(btn=>{
-      btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp));
-    });
-  });
 })();
 
 
