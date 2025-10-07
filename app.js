@@ -414,62 +414,119 @@
 })();
 
 
-// v23: Runtime injection for 6x6 EV preset bars (defensive, no DOM assumptions)
+
+// v32: EV preset bars injection (six/party/single) and 252-fixed application
 (function(){
-  try{
-    const sixRoot = document.getElementById('six');
-    if(!sixRoot) return;
-    // Helper: build bar dom
-    function makeBar(){
-      const labels = ['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
-      const bar = document.createElement('div');
-      bar.className = 'ev-presets six-ev';
-      labels.forEach(code=>{
-        const b=document.createElement('button');
-        b.className='btn';
-        b.dataset.evp=code;
-        b.textContent=code;
-        bar.appendChild(b);
+  const WANT=['HA252','AS252','HB252','HD252','CS252','BD252','HC252'];
+  const OLD2NEW={'A252S252':'AS252','C252S252':'CS252','H252B252':'HB252','H252D252':'HD252'};
+  const ROOTS=['six','party','single','solo'];
+
+  function makeBar(){
+    const bar=document.createElement('div'); bar.className='evbar7';
+    WANT.forEach(code=>{ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); });
+    return bar;
+  }
+
+  function findCards(root){
+    // try known card wrappers; otherwise any block with >=6 number inputs
+    let cards=[...root.querySelectorAll('.card, fieldset, .panel, .box')];
+    if(cards.length===0){
+      const blocks=[...root.querySelectorAll('section, div')];
+      cards = blocks.filter(bl=> bl.querySelectorAll('input[type="number"]').length>=6);
+    }
+    return cards;
+  }
+
+  function ensureBars(root){
+    findCards(root).forEach(card=>{
+      // rename legacy labels if存在
+      card.querySelectorAll('button').forEach(b=>{
+        const t=(b.textContent||'').replace(/\s+/g,'');
+        if(OLD2NEW[t]) b.textContent=OLD2NEW[t];
       });
-      return bar;
-    }
-    function applyPresetToCard(card, code){
-      const map={
-        'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
-        'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
-        'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
-        'HC252':{hp:252,spa:252}
-      };
-      const evs=map[code]||{};
-      const q=(ph)=> card.querySelector(`input[placeholder="${ph}"]`);
-      const inputs={'hp':q('H'),'atk':q('A'),'def':q('B'),'spa':q('C'),'spd':q('D'),'spe':q('S')};
-      const els = Object.values(inputs).filter(Boolean);
-      if(els.length===0) return;
-      // reset
-      els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
-      // apply
-      Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
-      // +0 to HP if <=504
-      /* removed auto +0 HP rule */)); }
-    }
-    // For every six card with EV inputs, insert a bar at the top (if not already there)
-    const cards = sixRoot.querySelectorAll('.card');
-    cards.forEach(card=>{
-      const hasEV = card.querySelector('input[placeholder="H"],input[placeholder="A"],input[placeholder="B"],input[placeholder="C"],input[placeholder="D"],input[placeholder="S"]');
-      if(!hasEV) return;
-      if(card.querySelector('.ev-presets.six-ev')) return;
-      const bar = makeBar();
-      // insert after the card header if exists, else prepend
-      const header = card.querySelector('h3, h4, .header, .title');
-      if(header && header.parentNode===card){
-        header.insertAdjacentElement('afterend', bar);
+      if(!card.querySelector('.evbar7')){
+        const bar=makeBar();
+        const header=card.querySelector('h3,h4,.header,.title');
+        if(header && header.parentNode===card) header.insertAdjacentElement('afterend',bar);
+        else card.prepend(bar);
       }else{
-        card.prepend(bar);
+        // fill不足
+        const seen=new Set([...card.querySelectorAll('.evbar7 [data-evp]')].map(x=>x.dataset.evp));
+        const bar=card.querySelector('.evbar7');
+        WANT.forEach(code=>{
+          if(!seen.has(code)){ const b=document.createElement('button'); b.className='btn'; b.dataset.evp=code; b.textContent=code; bar.appendChild(b); }
+        });
       }
-      bar.querySelectorAll('[data-evp]').forEach(btn=> btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp)));
     });
-  }catch(e){ console.error('six-ev preset inject failed', e); }
+  }
+
+  function findEVInputs(scope){
+    const res={};
+    const mapPH={'hp':'H','atk':'A','def':'B','spa':'C','spd':'D','spe':'S'};
+    for(const k in mapPH){
+      const el=scope.querySelector(`input[placeholder="${mapPH[k]}"]`);
+      if(el) res[k]=el;
+    }
+    const scan=scope.querySelectorAll('input[type="number"],input[type="text"]');
+    scan.forEach(el=>{
+      const key=((el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'')+' '+(el.previousElementSibling?.textContent||'')).toLowerCase();
+      if(!res.hp  && (key.includes('ev_h')||key.includes('hp')||/\\bh\\b/.test(key))) res.hp=el;
+      if(!res.atk && (key.includes('ev_a')||key.includes('atk')||key.includes('こうげき'))) res.atk=el;
+      if(!res.def && (key.includes('ev_b')||key.includes('def')||key.includes('ぼうぎょ'))) res.def=el;
+      if(!res.spa && (key.includes('ev_c')||key.includes('spa')||key.includes('とくこう')||/\\bc\\b/.test(key))) res.spa=el;
+      if(!res.spd && (key.includes('ev_d')||key.includes('spd')||key.includes('とくぼう')||/\\bd\\b/.test(key))) res.spd=el;
+      if(!res.spe && (key.includes('ev_s')||key.includes('spe')||key.includes('すばやさ')||key.includes('素早'))) res.spe=el;
+    });
+    // fallback: first row with >=6 numeric inputs
+    if(Object.values(res).filter(Boolean).length<6){
+      const rows=[...scope.querySelectorAll('.row,.ev-row,fieldset,.grid')];
+      for(const row of rows){
+        const nums=row.querySelectorAll('input[type="number"]');
+        if(nums.length>=6){
+          const order=['hp','atk','def','spa','spd','spe'];
+          order.forEach((k,i)=>{ if(!res[k] && nums[i]) res[k]=nums[i]; });
+          break;
+        }
+      }
+    }
+    return res;
+  }
+
+  function evMap(code){
+    return {
+      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252}, 'HB252':{hp:252,def:252},
+      'HD252':{hp:252,spd:252}, 'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+      'HC252':{hp:252,spa:252}
+    }[code]||{};
+  }
+
+  function apply(code, scope){
+    const inputs=findEVInputs(scope);
+    const evs=evMap(code);
+    const els=Object.values(inputs).filter(Boolean);
+    if(els.length<2) return;
+    // reset all to 0
+    els.forEach(el=>{ if('value' in el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // set two stats 252; others remain 0
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+  }
+
+  function boot(){
+    ROOTS.forEach(id=>{ const r=document.getElementById(id); if(r) ensureBars(r); });
+  }
+  // initial & late
+  document.addEventListener('DOMContentLoaded', boot);
+  setTimeout(boot, 500);
+  const iv=setInterval(()=>{ let ok=false; ROOTS.forEach(id=>{ if(document.getElementById(id)) ok=true; }); if(ok){ boot(); clearInterval(iv);} }, 250);
+
+  // global delegation for [data-evp] buttons in any root
+  document.addEventListener('click', (e)=>{
+    const btn=e.target.closest('[data-evp]'); if(!btn) return;
+    const scope=btn.closest('.card, fieldset, .panel, .box') || document.getElementById('six') || document;
+    apply(btn.dataset.evp, scope);
+  });
 })();
+;
 
 
 // v25: stronger EV input resolver within a six card
