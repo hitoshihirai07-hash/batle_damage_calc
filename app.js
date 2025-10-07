@@ -632,7 +632,7 @@ function collectParty(root){
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
     // add 4 to HP if <=504
     let total=0; Object.values(inputs).forEach(el=>{ total += Number(el&&el.value||0); });
-    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0); inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
   document.querySelectorAll('.six-ev').forEach(bar=>{
     const card = bar.closest('.card');
@@ -680,7 +680,7 @@ function collectParty(root){
       Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
       // +4 to HP if <=504
       let total=0; els.forEach(el=> total += Number(el.value||0));
-      if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+      if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0); inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
     }
     // For every six card with EV inputs, insert a bar at the top (if not already there)
     const cards = sixRoot.querySelectorAll('.card');
@@ -752,7 +752,7 @@ function collectParty(root){
     els.forEach(el=>{ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); });
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
     let total=0; els.forEach(el=> total += Number(el.value||0));
-    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0); inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
   // Delegate click from #six
   const sixRoot = document.getElementById('six');
@@ -869,7 +869,7 @@ function collectParty(root){
     Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
     // +4 HP if room
     let total=0; els.forEach(el=> total += Number(el.value||0));
-    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0); inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
   }
 
   six.querySelectorAll('.card').forEach(ensureBar);
@@ -942,7 +942,7 @@ function collectParty(root){
       Object.keys(ev).forEach(k=>{ const el=inputs[k]; if(el){ el.value=ev[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
       // +4 to HP if room
       let total=0; Object.values(inputs).forEach(el=> total+=Number(el&&el.value||0));
-      if(total<=504 && inputs.hp){ inputs.hp.value=Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+      if(total<=504 && inputs.hp){ inputs.hp.value=Number(inputs.hp.value||0); inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
     }, {once:false});
   }
   function map(code){
