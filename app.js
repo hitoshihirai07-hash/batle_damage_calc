@@ -24,6 +24,21 @@
   const NATURES={"いじっぱり":{atk:1.1,spa:0.9},"ようき":{spe:1.1,spa:0.9},"おくびょう":{spe:1.1,atk:0.9},"ひかえめ":{spa:1.1,atk:0.9},"ずぶとい":{def:1.1,atk:0.9},"おだやか":{spd:1.1,atk:0.9},"てれや":{}};
 
   const moveDB={list:[]};
+  const TYPE_ALIAS = new Map(Object.entries({
+    "電気":"でんき","炎":"ほのお","水":"みず","草":"くさ","氷":"こおり","地面":"じめん","飛行":"ひこう",
+    "悪":"あく","鋼":"はがね","妖精":"フェアリー","格闘":"かくとう","超":"エスパー","虫":"むし","岩":"いわ",
+    "霊":"ゴースト","龍":"ドラゴン","普通":"ノーマル","ノーマル":"ノーマル","ほのお":"ほのお","みず":"みず","でんき":"でんき",
+    "くさ":"くさ","こおり":"こおり","かくとう":"かくとう","どく":"どく","じめん":"じめん","ひこう":"ひこう","エスパー":"エスパー",
+    "むし":"むし","いわ":"いわ","ゴースト":"ゴースト","ドラゴン":"ドラゴン","あく":"あく","はがね":"はがね","フェアリー":"フェアリー"
+  }));
+  function canonType(s){
+    if(!s) return "";
+    let t = (""+s).trim().replace(/\\s+/g,"");
+    if(TYPE_ALIAS.has(t)) return TYPE_ALIAS.get(t);
+    return t;
+  }
+  function normTypeList(arr){ return (arr||[]).map(canonType).filter(Boolean); }
+
   const pokeDB={map:new Map(), displayNames:[]};
   const buildDB={raw:null, teams:[]};
 
@@ -42,7 +57,7 @@
         const t2raw = p.hasOwnProperty("タイプ2") ? p["タイプ2"] : "";
         const t2 = (t2raw===null || typeof t2raw==="undefined") ? "" : (""+t2raw).trim();
         const base = { hp:+(p["HP"]||0), atk:+(p["攻撃"]||0), def:+(p["防御"]||0), spa:+(p["特攻"]||0), spd:+(p["特防"]||0), spe:+(p["素早"]||0) };
-        const types = (t2? [t1,t2] : [t1]).filter(Boolean);
+        const types = normTypeList(t2? [t1,t2] : [t1]);
         pokeDB.map.set(name,{types,base});
         dispSet.add(name);
         const nn = normName(name);
@@ -66,18 +81,15 @@
   function itemMul(item,cat){ if(!item) return 1.0; if(/こだわりハチマキ/.test(item)&&cat==="物理")return 1.5; if(/こだわりメガネ/.test(item)&&cat==="特殊")return 1.5; if(/いのちのたま/.test(item))return 1.3; return 1.0; }
   function abilityMul(ab,mt,cat){ if(!ab) return 1.0; if(/てきおうりょく/.test(ab)) return 1.33; if(/もらいび/.test(ab)&&mt==="ほのお")return 1.5; return 1.0; }
 
-  // 免疫ガード: 相性0を検出したら即0ダメージを返す
   function calcDamage(ctx){
     const L=Number(ctx.level||50), A=ctx.category==="物理"?ctx.atk:ctx.spa, D=ctx.category==="物理"?ctx.def:ctx.spd;
     const BP=Math.max(1,Number(ctx.power||0));
-    const typeMul=typeEffect(ctx.moveType,ctx.defenderTypes||[]);
-    if(typeMul===0) return [0,0,0]; // [min,max,相性]
-
+    const typeMul=typeEffect(canonType(ctx.moveType), normTypeList(ctx.defenderTypes||[]));
+    if(typeMul===0) return [0,0,0];
     const base=Math.floor(Math.floor((2*L/5+2)*BP*A/Math.max(1,D))/50)+2;
-    let mod=1.0;
-    const stab=stabMultiplier(ctx.attackerTypes||[],ctx.teraType,ctx.moveType);
-    mod*=stab; mod*=typeMul; mod*=weatherMul(ctx.weather,ctx.moveType);
-    if(ctx.critical) mod*=1.5; if(ctx.burn&&ctx.category==="物理") mod*=0.5; mod*=itemMul(ctx.item,ctx.category); mod*=abilityMul(ctx.ability,ctx.moveType,ctx.category); if(ctx.screen) mod*= 0.5;
+    let mod=1.0; const stab=stabMultiplier(normTypeList(ctx.attackerTypes||[]),ctx.teraType,canonType(ctx.moveType));
+    mod*=stab; mod*=typeMul; mod*=weatherMul(ctx.weather,canonType(ctx.moveType));
+    if(ctx.critical) mod*=1.5; if(ctx.burn&&ctx.category==="物理") mod*=0.5; mod*=itemMul(ctx.item,ctx.category); mod*=abilityMul(ctx.ability,canonType(ctx.moveType),ctx.category); if(ctx.screen) mod*= 0.5;
     const min=Math.floor(base*mod*0.85), max=Math.floor(base*mod*1.00);
     return [min,max,typeMul];
   }
@@ -125,10 +137,10 @@
     let best=[0,0], bestMul=1, name="";
     for(const mvName of moves){
       const mv=moveByName(mvName); if(!mv) continue; if(mv.c==="変化"||!mv.p) continue;
-      const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:mv.t, attackerTypes:att.types, defenderTypes:def.types,
+      const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:canonType(mv.t), attackerTypes:normTypeList(att.types), defenderTypes:normTypeList(def.types),
         teraType:document.getElementById('sel_tera').value||null, weather:document.getElementById('sel_weather').value||null, critical:document.getElementById('chk_crit').checked, burn:false, item:document.getElementById('sel_item').value||null, ability:document.getElementById('sel_ability').value||null, screen:document.getElementById('chk_screen').checked, format:'シングル'};
       const dmg=calcDamage(ctx);
-      const mul = (Array.isArray(dmg) && dmg.length>2) ? dmg[2] : 1;
+      const mul = (Array.isArray(dmg)&&dmg.length>2)? dmg[2] : 1;
       if(dmg[1]>best[1]){ best=[dmg[0],dmg[1]]; bestMul=mul; name=mvName; }
     }
     return {dmg:best, name, mul:bestMul};
@@ -160,7 +172,7 @@
       inp.addEventListener('change',()=>{
         const row=inp.closest('.row'), mv=moveByName(inp.value);
         if(mv&&row){ const t=row.querySelector('[data-move-type]'), c=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]');
-          if(t&&!t.value) t.value=mv.t||''; if(c&&!c.value) c.value=mv.c||''; if(p&&(!p.value||p.value==='0')) p.value=mv.p||0;
+          if(t&&!t.value) t.value=canonType(mv.t)||''; if(c&&!c.value) c.value=mv.c||''; if(p&&(!p.value||p.value==='0')) p.value=mv.p||0;
         }
       });
     });
@@ -176,7 +188,6 @@
     }));
   }
 
-  // === 構築記事 === （前版のまま）
   function parseBuild(json){
     let arr=[];
     if(Array.isArray(json)) arr=json;
@@ -184,26 +195,33 @@
     else if(json.data) arr=json.data;
     else if(json.list) arr=json.list;
     if(arr.length===0){
-      const keys=Object.keys(json||{});
-      for(const k of keys){
-        if(Array.isArray(json[k]) && json[k].length && (json[k][0].team || json[k][0].members || json[k][0].pokemon)){
-          arr=json[k]; break;
-        }
+      for(const k of Object.keys(json||{})){
+        const v=json[k];
+        if(Array.isArray(v)){ arr=v; break; }
       }
     }
+    const digTeam = (rec)=>{
+      if(!rec) return null;
+      const rawTeam = rec.team || rec.members || rec.pokemon || rec.party || rec.list || rec["チーム"] || rec["構築"] || rec["パーティ"] || rec["ポケモン"];
+      if(Array.isArray(rawTeam)) return rawTeam;
+      if(Array.isArray(rec)) return rec;
+      if(rec.member && Array.isArray(rec.member)) return rec.member;
+      const cand = ["p1","p2","p3","p4","p5","p6"].map(k=>rec[k]).filter(Boolean);
+      if(cand.length) return cand;
+      return null;
+    };
+    const toMon = (m)=>{
+      const name=(m&& (m.name||m.pokemon||m["ポケモン"]||m.name_ja||m["name_ja"]||m.species||"")).toString().trim();
+      const item=(m&& (m.item||m.held_item||m["持ち物"]||"")).toString().trim();
+      const tera=(m&& (m.tera||m.terastal||m.tera_type||m["テラス"]||"")).toString().trim();
+      return {name,item,tera};
+    };
+    const toRank = (rec,idx)=> Number(rec.rank||rec.Rank||rec["順位"]||rec.place||rec["place"]|| idx+1);
     const teams=[];
-    arr.forEach((rec,idx)=>{
-      const rawTeam = rec.team || rec.members || rec.pokemon || rec.party || rec["チーム"] || rec["構築"] || rec["パーティ"] || rec["ポケモン"];
-      const list = Array.isArray(rawTeam) ? rawTeam : (Array.isArray(rec) ? rec : []);
-      const rank = rec.rank || rec.Rank || rec["順位"] || (rec.place) || (idx+1);
-      const mons = list.slice(0,6).map(m=>{
-        const name=(m.name||m.pokemon||m["ポケモン"]||m["name_ja"]||"").toString().trim();
-        const item=(m.item||m["持ち物"]||"")+"";
-        const tera=(m.tera||m.terastal||m["テラス"]||"")+"";
-        return {name,item,tera};
-      });
-      if(mons.length){
-        teams.push({rank:Number(rank)||idx+1, mons});
+    (arr||[]).forEach((rec,idx)=>{
+      let list = digTeam(rec);
+      if(Array.isArray(list)&&list.length){
+        teams.push({rank:toRank(rec,idx), mons:list.slice(0,6).map(toMon)});
       }
     });
     return teams;
@@ -214,7 +232,7 @@
       document.querySelectorAll('.tab').forEach(u=>u.setAttribute('aria-selected', u===t?'true':'false'));
       document.querySelectorAll('.panel').forEach(p=>p.setAttribute('aria-hidden', p.id===t.dataset.tab?'false':'true'));
     }));
-    document.querySelector('.tab[data-tab="build"]').click();
+    document.querySelector('.tab[data-tab=\"build\"]').click();
 
     buildDatalist('dl_moves', (moveDB.list.map(m=>m.n||m.name).filter(Boolean).sort()));
     buildDatalist('dl_pokemon', pokeDB.displayNames);
@@ -232,8 +250,8 @@
           buildDB.teams=parseBuild(json);
           if(!buildDB.teams.length){ alert('構築チームが見つかりませんでした（ファイル形式を確認してください）'); return; }
           renderBuildCards();
-          document.querySelector('.tab[data-tab="build"]').click();
-        }catch(e){ alert('構築記事JSONの読み取りに失敗しました'); }
+          document.querySelector('.tab[data-tab=\"build\"]').click();
+        }catch(e){ alert('構築記事JSONの読み取りに失敗しました'); console.error(e); }
       }; rd.readAsText(file,'utf-8');
     });
     document.getElementById('build_rank_max').addEventListener('input', renderBuildCards);
@@ -250,23 +268,26 @@
           const teams=parseBuild(json);
           if(!teams.length){ alert('有効なチームが見つかりませんでした'); return; }
           const picker=document.getElementById('opp_picker');
-          const sel=document.getElementById('opp_picker_select');
-          sel.innerHTML="";
+          if(picker){ picker.remove(); }
+          const bar=document.getElementById('matrix_bar');
+          const box=document.createElement('div'); box.id='opp_picker'; box.style.display='flex'; box.style.gap='8px'; box.style.alignItems='center';
+          box.innerHTML='<label>相手構築</label><select id=\"opp_picker_select\"></select><button class=\"btn\" id=\"opp_picker_apply\">反映</button>';
+          bar.appendChild(box);
+          const sel=box.querySelector('#opp_picker_select');
           teams.forEach((t,idx)=>{
             const o=document.createElement('option'); o.value=idx; o.textContent=`順位${t.rank||'-'}: ${t.mons.map(m=>m.name).filter(Boolean).slice(0,3).join(' / ')}…`; sel.appendChild(o);
           });
-          picker.style.display='flex';
-          document.getElementById('opp_picker_apply').onclick=()=>{
+          box.querySelector('#opp_picker_apply').onclick=()=>{
             const i=Number(sel.value||0);
             const cards=Array.from(document.querySelectorAll('#opp .card'));
             (teams[i].mons||[]).slice(0,6).forEach((m,idx)=>{
               const input=cards[idx]?.querySelector('[data-poke-input]');
-              if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
+              if(input){ input.value=m.name||\"\"; input.dispatchEvent(new Event('change',{bubbles:true})); }
             });
-            picker.style.display='none';
-            document.querySelector('.tab[data-tab="six"]').click();
+            box.remove();
+            document.querySelector('.tab[data-tab=\"six\"]').click();
           };
-        }catch(e){ alert('JSONの形式を読み取れませんでした'); }
+        }catch(e){ alert('JSONの形式を読み取れませんでした'); console.error(e); }
       }; rd.readAsText(file,'utf-8');
     });
 
@@ -284,33 +305,32 @@
   function collectParty(root){
     const cards=Array.from(root.querySelectorAll('.card')); const members=[];
     cards.slice(0,6).forEach(c=>{
-      const name=c.querySelector('[data-poke-input]')?.value?.trim()||"";
-      const nature=c.querySelector('[data-nature]')?.value||"てれや";
+      const name=c.querySelector('[data-poke-input]')?.value?.trim()||\"\";
+      const nature=c.querySelector('[data-nature]')?.value||\"てれや\";
       const evs={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> evs[k]=Number(c.querySelector('[data-ev-'+k+']')?.value||0));
       const moves=Array.from(c.querySelectorAll('[data-move-input]')).map(i=>i.value.trim()).filter(Boolean);
       members.push({name,nature,evs,moves});
     });
-    return {name:document.getElementById('party_name').value||"", members};
+    return {name:document.getElementById('party_name').value||\"\", members};
   }
   function applyPartyToSelf(party){
     const cards=Array.from(document.querySelectorAll('#self .card'));
     (party.members||[]).slice(0,6).forEach((m,i)=>{
       const c=cards[i]; if(!c) return;
-      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||""; name.dispatchEvent(new Event('change',{bubbles:true})); }
+      const name=c.querySelector('[data-poke-input]'); if(name){ name.value=m.name||\"\"; name.dispatchEvent(new Event('change',{bubbles:true})); }
       ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=(m.evs&&m.evs[k])||0; });
       const mvInputs=Array.from(c.querySelectorAll('[data-move-input]'));
       mvInputs.forEach((inp,idx)=>{
         const mv=(m.moves||[])[idx]; const row=inp.closest('.row');
-        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=mvObj.t||""; if(cat) cat.value=mvObj.c||""; if(p) p.value=mvObj.p||0; } } }
-        else { inp.value=""; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } }
+        if(mv){ inp.value=mv; if(row){ const mvObj=moveByName(mv); if(mvObj){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=canonType(mvObj.t)||\"\"; if(cat) cat.value=mvObj.c||\"\"; if(p) p.value=mvObj.p||0; } } }
+        else { inp.value=\"\"; if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=\"\"; if(cat) cat.value=\"\"; if(p) p.value=\"\"; } }
       });
     });
-    document.querySelector('.tab[data-tab="six"]').click();
+    document.querySelector('.tab[data-tab=\"six\"]').click();
   }
 
   function readMonFromPanel(panel){
-    const name=panel.querySelector('[data-poke-input]')?.value?.trim||"";
-    const nm = (typeof name==="function"? panel.querySelector('[data-poke-input]').value.trim() : name);
+    const nm=(panel.querySelector('[data-poke-input]')?.value||\"\").trim();
     const nat=panel.querySelector('[data-nature]')?.value||'てれや';
     const ev={}; ['hp','atk','def','spa','spd','spe'].forEach(k=> ev[k]=Number(panel.querySelector('[data-ev-'+k+']')?.value||0));
     const stat=statBlock(nm,ev,nat,50,31);
@@ -331,7 +351,8 @@
         if(A.name && B.name && A.moves.length && !A.stat._unknown && !B.stat._unknown){
           const best=bestMoveDamage(A.stat,B.stat,{},A.moves);
           const [mi,ma]=pct(best.dmg[0],best.dmg[1],B.stat.hp);
-          td.textContent=`${mi}-${ma}%`;
+          const dmin = best.dmg[0], dmax = best.dmg[1];
+          td.textContent=`${mi}-${ma}% (${dmin}-${dmax})`;
           const mulText=(best.mul===0?'×0 (無効)': `×${best.mul}`);
           td.title = `${best.name||''} / ${mulText}`;
         }else if(A.name && B.name && (A.stat._unknown || B.stat._unknown)){
@@ -344,41 +365,41 @@
   }
 
   function renderBuildCards(){
-    const wrap=document.getElementById('build_cards'); wrap.innerHTML="";
+    const wrap=document.getElementById('build_cards'); wrap.innerHTML=\"\";
     const limit=Number(document.getElementById('build_rank_max').value||100);
     const kw = document.getElementById('build_search').value.toString().trim().toLowerCase();
     const teams = buildDB.teams || [];
     let shown=0;
     teams.sort((a,b)=> (a.rank||9999)-(b.rank||9999)).forEach(t=>{
       if(t.rank && t.rank>limit) return;
-      if(kw && !t.mons.some(m=> (m.name||"").toLowerCase().includes(kw))) return;
+      if(kw && !t.mons.some(m=> (m.name||\"\").toLowerCase().includes(kw))) return;
       const card=document.createElement('div'); card.className='team-card';
-      const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||""}</td><td>${m.item||""}</td><td>${m.tera||""}</td></tr>`).join('');
+      const rows=t.mons.map((m,idx)=>`<tr><td>${idx+1}</td><td>${m.name||\"\"}</td><td>${m.item||\"\"}</td><td>${m.tera||\"\"}</td></tr>`).join('');
       card.innerHTML = `<h4>順位: ${t.rank||'-'}</h4>
-        <table class="team-table"><thead><tr><th>#</th><th>ポケモン</th><th>持ち物</th><th>テラス</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class="row" style="margin-top:6px">
-          <button class="btn" data-apply-party>→ パーティに反映（ポケモンのみ）</button>
-          <button class="btn" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
+        <table class=\"team-table\"><thead><tr><th>#</th><th>ポケモン</th><th>持ち物</th><th>テラス</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class=\"row\" style=\"margin-top:6px\">
+          <button class=\"btn\" data-apply-party>→ パーティに反映（ポケモンのみ）</button>
+          <button class=\"btn\" data-apply-opp>→ 相手6×6に反映（ポケモンのみ）</button>
         </div>`;
       card.querySelector('[data-apply-party]').addEventListener('click', ()=>{
-        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||"", nature:"てれや", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
+        const party={name:`Rank${t.rank}`, members:(t.mons||[]).slice(0,6).map(m=>({name:m.name||\"\", nature:\"てれや\", evs:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, moves:[]}))};
         const root=document.getElementById('party'); const cards=Array.from(root.querySelectorAll('.card'));
         for(let i=0;i<6;i++){
           const c=cards[i]; if(!c) continue;
-          const m=(party.members||[])[i] || {name:""};
-          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||""; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
+          const m=(party.members||[])[i] || {name:\"\"};
+          const nameInp=c.querySelector('[data-poke-input]'); if(nameInp){ nameInp.value=m.name||\"\"; nameInp.dispatchEvent(new Event('change',{bubbles:true})); }
           ['hp','atk','def','spa','spd','spe'].forEach(k=>{ const el=c.querySelector('[data-ev-'+k+']'); if(el) el.value=0; });
-          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=""; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=""; if(cat) cat.value=""; if(p) p.value=""; } });
+          c.querySelectorAll('[data-move-input]').forEach(inp=>{ inp.value=\"\"; const row=inp.closest('.row'); if(row){ const t=row.querySelector('[data-move-type]'), cat=row.querySelector('[data-move-cat]'), p=row.querySelector('[data-move-pow]'); if(t) t.value=\"\"; if(cat) cat.value=\"\"; if(p) p.value=\"\"; } });
         }
-        document.querySelector('.tab[data-tab="party"]').click();
+        document.querySelector('.tab[data-tab=\"party\"]').click();
       });
       card.querySelector('[data-apply-opp]').addEventListener('click', ()=>{
         const cards=Array.from(document.querySelectorAll('#opp .card'));
         (t.mons||[]).slice(0,6).forEach((m,i)=>{
           const input=cards[i]?.querySelector('[data-poke-input]');
-          if(input){ input.value=m.name||""; input.dispatchEvent(new Event('change',{bubbles:true})); }
+          if(input){ input.value=m.name||\"\"; input.dispatchEvent(new Event('change',{bubbles:true})); }
         });
-        document.querySelector('.tab[data-tab="six"]').click();
+        document.querySelector('.tab[data-tab=\"six\"]').click();
       });
       wrap.appendChild(card); shown++;
     });
