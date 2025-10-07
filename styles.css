@@ -70,3 +70,6 @@ input[type=number]{width:90px}.btn{background:#1f2937;border:1px solid #3b82f6;c
 /* v21 single calc controls */
 .row .rank{display:inline-flex;gap:6px;align-items:center}
 .row .rank select{min-width:64px}
+
+/* v23: hide any extra timer docks just in case */
+.timer-dock:not(:first-of-type){display:none!important}
