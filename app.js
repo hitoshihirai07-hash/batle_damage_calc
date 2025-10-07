@@ -128,7 +128,7 @@
       const ctx={level:50, atk:att.atk, spa:att.spa, def:def.def, spd:def.spd, power:mv.p, category:mv.c, moveType:mv.t, attackerTypes:att.types, defenderTypes:def.types,
         teraType:document.getElementById('sel_tera').value||null, weather:document.getElementById('sel_weather').value||null, critical:document.getElementById('chk_crit').checked, burn:false, item:document.getElementById('sel_item').value||null, ability:document.getElementById('sel_ability').value||null, screen:document.getElementById('chk_screen').checked, format:'シングル'};
       const dmg=calcDamage(ctx);
-      const mul=dmg[2] if (Array.isArray(dmg) && dmg.length>2) else 1;
+      const mul = (Array.isArray(dmg) && dmg.length>2) ? dmg[2] : 1;
       if(dmg[1]>best[1]){ best=[dmg[0],dmg[1]]; bestMul=mul; name=mvName; }
     }
     return {dmg:best, name, mul:bestMul};
