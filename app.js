@@ -717,12 +717,12 @@ function collectParty(root){
     cand.forEach(el=>{
       const key=(el.name||'')+' '+(el.id||'')+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||'');
       const m=(p)=> key.toLowerCase().includes(p);
-      if(!result.hp && (m('ev_h') or m('hp'))) result.hp=el
-      if(!result.atk && (m('ev_a') or m('atk'))) result.atk=el
-      if(!result.def && (m('ev_b') or m('def'))) result.def=el
-      if(!result.spa && (m('ev_c') or m('spa'))) result.spa=el
-      if(!result.spd && (m('ev_d') or m('spd'))) result.spd=el
-      if(!result.spe && (m('ev_s') or m('spe'))) result.spe=el
+      if(!result.hp && (m('ev_h') || m('hp'))) result.hp=el
+      if(!result.atk && (m('ev_a') || m('atk'))) result.atk=el
+      if(!result.def && (m('ev_b') || m('def'))) result.def=el
+      if(!result.spa && (m('ev_c') || m('spa'))) result.spa=el
+      if(!result.spd && (m('ev_d') || m('spd'))) result.spd=el
+      if(!result.spe && (m('ev_s') || m('spe'))) result.spe=el
     });
     // 3) fallback: pick first 6 numeric inputs inside a row that seems EV row
     if(Object.keys(result).length<6){
