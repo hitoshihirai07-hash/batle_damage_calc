@@ -370,12 +370,20 @@
       const teraSel = document.getElementById('sc_a_tera');
       if(msel && mtyp && teraSel){ fillTypeSelect(mtyp); fillTypeSelect(teraSel); }
 
-      if(msel){
-        msel.addEventListener('change', ()=>{
-          const mv = moveByName(msel.value);
-          if(mv){ if(!mtyp.value) mtyp.value=canonType(mv.t)||''; if(!mcat.value) mcat.value=mv.c||''; if(!mpow.value||mpow.value==='0') mpow.value=mv.p||0; }
-        });
+      
+if(msel){
+  msel.addEventListener('change', ()=>{
+    try{
+      const mv = (typeof moveByName==='function') ? moveByName(msel.value) : null;
+      if(mv){
+        if(mtyp){ mtyp.value = (mv.type || mv.t || '').toString(); }
+        if(mcat){ mcat.value = (mv.category || mv.c || '').toString(); }
+        if(mpow){ mpow.value = Number(mv.power ?? mv.p ?? 0); }
       }
+    }catch(e){ console.warn('msel change handler failed', e); }
+  });
+}
+
       if(aName){ aName.addEventListener('change', ()=>{}); }
 if(bName){ bName.addEventListener('change', ()=>{}); }); });
       }
