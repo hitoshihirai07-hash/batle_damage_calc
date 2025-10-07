@@ -615,3 +615,32 @@ function collectParty(root){
     buildUI();
   });
 })();
+
+
+// v22: bind six-ev preset bars to inputs within each six card
+(function(){
+  function applyPresetToCard(card, code){
+    const map={
+      'HA252':{hp:252,atk:252}, 'AS252':{atk:252,spe:252},
+      'HB252':{hp:252,def:252}, 'HD252':{hp:252,spd:252},
+      'CS252':{spa:252,spe:252}, 'BD252':{def:252,spd:252},
+      'HC252':{hp:252,spa:252}
+    };
+    const evs=map[code]||{};
+    const q = (ph)=> card.querySelector(`input[placeholder="${ph}"]`);
+    const inputs={'hp':q('H'),'atk':q('A'),'def':q('B'),'spa':q('C'),'spd':q('D'),'spe':q('S')};
+    // reset to 0
+    Object.values(inputs).forEach(el=>{ if(el){ el.value=0; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // apply
+    Object.keys(evs).forEach(k=>{ const el=inputs[k]; if(el){ el.value=evs[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }});
+    // add 4 to HP if <=504
+    let total=0; Object.values(inputs).forEach(el=>{ total += Number(el&&el.value||0); });
+    if(total<=504 && inputs.hp){ inputs.hp.value = Number(inputs.hp.value||0)+4; inputs.hp.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  document.querySelectorAll('.six-ev').forEach(bar=>{
+    const card = bar.closest('.card');
+    bar.querySelectorAll('[data-evp]').forEach(btn=>{
+      btn.addEventListener('click', ()=> applyPresetToCard(card, btn.dataset.evp));
+    });
+  });
+})();
